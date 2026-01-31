@@ -11,6 +11,8 @@ cache/
 # Matrices directories
 data/
 docs/
+plots/
+models/
 
 # IDE files
 .vscode/

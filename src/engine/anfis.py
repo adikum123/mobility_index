@@ -257,4 +257,3 @@ class ANFIS:
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         plt.savefig(self.plots_path / "predictions_vs_true_ratings.png")
-        plt.show()

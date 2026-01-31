@@ -2,7 +2,7 @@ from src.engine import ANFIS
 
 model = ANFIS(
     num_indices=3,
-    num_epochs=5,
+    num_epochs=50,
     learning_rate=0.01,
     membership_functions="triangular",
     optimizer="adam",

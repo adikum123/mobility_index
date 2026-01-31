@@ -241,7 +241,7 @@ class ANFIS:
 
         # X = randomly selected sample indices, Y = y_true and y_pred
         n = len(Y_test)
-        n_plot = min(500, n)
+        n_plot = min(50, n)
         rng = np.random.default_rng(42)
         idx = rng.choice(n, size=n_plot, replace=False)
         y_test_rand = Y_test[idx]

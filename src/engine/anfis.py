@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import anfis_toolbox as atb
@@ -18,6 +19,7 @@ class ANFIS:
         membership_functions: str,
         optimizer: str,
         time_interval: int,
+        loss_function: str,
     ):
         assert num_indices in [3, 4], "Number of indices must be 3 or 4"
         assert isinstance(time_interval, int) and time_interval in range(
@@ -35,6 +37,7 @@ class ANFIS:
             learning_rate=learning_rate,
             mf_type=membership_functions,
             optimizer=optimizer,
+            loss=loss_function,
         )
         self.base_dir = Path(__file__).parents[2]
         self.data_path = self.base_dir / "data" / "output"
@@ -92,11 +95,12 @@ class ANFIS:
             # stack flattened matrices as columns
             X = np.column_stack(
                 (
+                    # add 1e-6 for numerical stability
                     journey_count_matrix_flat + 1e-6,
                     time_matrix_flat + 1e-6,
                     distance_matrix_flat + 1e-6,
                 )
-            )
+            ).astype(float)
             return X
 
     def _get_lookup(self) -> dict[tuple[str, str, str], float]:
@@ -158,102 +162,127 @@ class ANFIS:
         self.X = X
         self.Y = Y
 
-    def get_train_val_data(self, random_state: int = 42):
+    def set_train_val_data(self, random_state: int = 42):
         """
-        Returns a train-validation split using 60%-20% of the original data.
+        Returns a train-validation split using 80% for training, 20% for testing.
         """
-        # First split: 80% train+val, 20% test (we’ll discard test here)
-        X_train_val, _, Y_train_val, _ = train_test_split(
-            self.X, self.Y, test_size=0.2, random_state=random_state
-        )
-        # Second split: 75% train, 25% val → effectively 60% train, 20% val
         X_train, X_val, Y_train, Y_val = train_test_split(
-            X_train_val,
-            Y_train_val,
-            test_size=0.25,
-            random_state=random_state,
+            self.X, self.Y, test_size=0.2, random_state=random_state
         )
         print(f"Train samples: {len(X_train)}, Validation samples: {len(X_val)}")
-        return X_train, X_val, Y_train, Y_val
 
-    def get_test_data(self, random_state: int = 42):
-        """
-        Returns a hold-out test set using 20% of the original data.
-        """
-        _, X_test, _, Y_test = train_test_split(
-            self.X, self.Y, test_size=0.2, random_state=random_state
+        # remove rows where all inputs are 0
+        mask = ~np.all(X_train == 0, axis=1)
+        X_train = X_train[mask]
+        Y_train = Y_train[mask]
+        print(
+            f"Removed {len(X_train) - len(X_train[mask])} rows where all inputs are 0"
         )
-        print(f"Test samples: {len(X_test)}")
-        return X_test, Y_test
+        mask = ~np.all(X_val == 0, axis=1)
+        X_val = X_val[mask]
+        Y_val = Y_val[mask]
+        print(f"Removed {len(X_val) - len(X_val[mask])} rows where all inputs are 0")
+
+        self.X_train = X_train
+        self.X_val = X_val
+        self.Y_train = Y_train
+        self.Y_val = Y_val
 
     def train(self) -> None:
+        start_time = time.time()
+
         # data
         print("Preparing data...")
         self.set_data()
         print(f"Data shape: X={self.X.shape}, Y={self.Y.shape}")
 
         # split data into training and validation sets
-        X_train, X_val, Y_train, Y_val = train_test_split(
-            self.X, self.Y, test_size=0.2, random_state=42
+        self.set_train_val_data()
+        print(
+            f"Training samples: {len(self.X_train)}, Validation samples: {len(self.X_val)}"
         )
-        print(f"Training samples: {len(X_train)}, Validation samples: {len(X_val)}")
 
         # training
         print("Starting ANFIS training...")
-        self.model.fit(X_train, Y_train, validation_data=(X_val, Y_val))
+        self.model.fit(self.X_train, self.Y_train, verbose=True)
         print("Training completed successfully")
 
+        end_time = time.time()
+        print(
+            f"Training time: {end_time - start_time} seconds for {self.num_epochs} epochs"
+        )
+
         # save model
-        self.model.save(self.models_dir / "anfis_model.pkl")
-        print(f"Model saved to {self.models_dir / 'anfis_model.pkl'}")
+        self.model.save(
+            self.models_dir / f"anfis_model_time_interval_{self.time_interval}.pkl"
+        )
 
         # extract plots from the training history
         history = self.model.training_history_
         train_loss = history["train"]
-        val_loss = history["val"]
         print("Plotting training progress...")
-        plt.figure(figsize=(8, 5))
-        plt.plot(train_loss, label="Training Loss")
-        plt.plot(val_loss, label="Validation Loss")
-        plt.title("ANFIS Training Loss Over Epochs")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.legend()
-        plt.grid(True)
-        plt.savefig(self.plots_path / "training_loss.png")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.plot(train_loss, label="Training Loss")
+        ax.set_title(
+            f"ANFIS Training Loss Over Epochs (time interval {self.time_interval})"
+        )
+        ax.set_xlabel("Epoch")
+        ax.set_ylabel("Loss")
+        ax.legend()
+        ax.grid(True)
+        fig.savefig(
+            self.plots_path / f"training_loss_time_interval_{self.time_interval}.png"
+        )
+        plt.close(fig)
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict ratings, clipped to [0, 1]."""
+        pred = self.model.predict(X)
+        return np.clip(pred, 0.0, 1.0)
 
     def test(self):
         """
         Evaluate the model on the test set.
         """
-        # get data
-        X_test, Y_test = self.get_test_data()
+        metrics = {}
 
         # evaluate metrics
-        Y_pred = self.model.predict(X_test)
-        mse = mean_squared_error(Y_test, Y_pred)
-        r2 = r2_score(Y_test, Y_pred)
+        Y_pred = self.model.predict(self.X_val)
+        mse = mean_squared_error(self.Y_val, Y_pred)
+        r2 = r2_score(self.Y_val, Y_pred)
 
         # print metrics
         print("Test Set Evaluation:")
-        print(f"R²: {r2:.4f}")
-        print(f"MSE: {mse:.4f}")
+        print(f"R²: {r2:.8f} for time interval {self.time_interval}")
+        print(f"MSE: {mse:.8f} for time interval {self.time_interval}")
+        print(f"RMSE: {np.sqrt(mse):.8f} for time interval {self.time_interval}")
 
         # X = randomly selected sample indices, Y = y_true and y_pred
-        n = len(Y_test)
+        n = len(self.X_val)
         n_plot = min(50, n)
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(42 + self.time_interval)
         idx = rng.choice(n, size=n_plot, replace=False)
-        y_test_rand = Y_test[idx]
+        y_test_rand = self.Y_val[idx]
         y_pred_rand = Y_pred[idx]
         x_samples = np.arange(n_plot)
-        plt.figure(figsize=(12, 5))
-        plt.plot(x_samples, y_test_rand, "o-", label="y_true", markersize=4, alpha=0.8)
-        plt.plot(x_samples, y_pred_rand, "s-", label="y_pred", markersize=4, alpha=0.8)
-        plt.xlabel("Sample")
-        plt.ylabel("Rating")
-        plt.title("ANFIS: y_true vs y_pred (random sample)")
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(self.plots_path / "predictions_vs_true_ratings.png")
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax.plot(x_samples, y_test_rand, "o-", label="y_true", markersize=4, alpha=0.8)
+        ax.plot(x_samples, y_pred_rand, "s-", label="y_pred", markersize=4, alpha=0.8)
+        ax.set_xlabel("Sample")
+        ax.set_ylabel("Rating")
+        ax.set_title(f"ANFIS: y_true vs y_pred (time interval {self.time_interval})")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(
+            self.plots_path
+            / f"predictions_vs_true_ratings_time_interval_{self.time_interval}.png"
+        )
+        plt.close(fig)
+
+        metrics = {
+            "r2": r2,
+            "mse": mse,
+            "rmse": np.sqrt(mse),
+        }
+        return metrics

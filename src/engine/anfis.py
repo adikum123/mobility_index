@@ -257,14 +257,21 @@ class ANFIS:
         print(f"MSE: {mse:.8f} for time interval {self.time_interval}")
         print(f"RMSE: {np.sqrt(mse):.8f} for time interval {self.time_interval}")
 
-        # X = randomly selected sample indices, Y = y_true and y_pred
-        n = len(self.X_val)
-        n_plot = min(50, n)
+        # Select up to 10 samples per distinct Y_val for stratified plot
         rng = np.random.default_rng(42 + self.time_interval)
-        idx = rng.choice(n, size=n_plot, replace=False)
+        unique_y = np.unique(self.Y_val)
+        idx_list = []
+        for y_val in unique_y:
+            mask = self.Y_val == y_val
+            indices = np.where(mask)[0]
+            n_sample = min(10, len(indices))
+            chosen = rng.choice(indices, size=n_sample, replace=False)
+            idx_list.extend(chosen)
+        idx = np.array(idx_list)
+        idx = idx[np.argsort(self.Y_val[idx])]  # sort by y_true for clearer plot
         y_test_rand = self.Y_val[idx]
         y_pred_rand = Y_pred[idx]
-        x_samples = np.arange(n_plot)
+        x_samples = np.arange(len(idx))
         fig, ax = plt.subplots(figsize=(12, 5))
         ax.plot(x_samples, y_test_rand, "o-", label="y_true", markersize=4, alpha=0.8)
         ax.plot(x_samples, y_pred_rand, "s-", label="y_pred", markersize=4, alpha=0.8)

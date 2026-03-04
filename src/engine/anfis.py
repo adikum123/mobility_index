@@ -20,6 +20,7 @@ class ANFIS:
         optimizer: str,
         time_interval: int,
         loss_function: str,
+        index4_diag: bool = None,
     ):
         assert num_indices in [3, 4], "Number of indices must be 3 or 4"
         assert isinstance(time_interval, int) and time_interval in range(
@@ -48,6 +49,7 @@ class ANFIS:
         self.journey_count_cats = ("Mali", "Srednji", "Veliki")
         self.duration_cats = ("Kratko", "Srednje", "Dugo")
         self.distance_cats = ("Kratka", "Srednja", "Velika")
+        self.index4_cats = ("Niska", "Umjerena", "Visoka")
 
         # map column names to English snake_case
         self.column_map = {
@@ -56,6 +58,14 @@ class ANFIS:
             "Udaljenost": "distance_category",
             "Ocjena": "rating",
         }
+        if self.num_indices == 4:
+            self.column_map["Dostupnost"] = "availability_category"
+
+        # if 4 indices are used check index4_diag must be provided
+        assert num_indices == 3 or (
+            num_indices == 4 and index4_diag is not None
+        ), "If 4 indices are used index4_diag must be provided"
+        self.index4_diag = index4_diag
 
     @staticmethod
     def _discretize(value: float) -> int:
@@ -66,32 +76,32 @@ class ANFIS:
         return 2
 
     def _get_X(self) -> np.ndarray:
+        # load distance matrix
+        distance_matrix_path = (
+            self.data_path / "distance_matrices" / "distance_matrix.xlsx"
+        )
+        df = pd.read_excel(distance_matrix_path, index_col=0)
+        distance_matrix_flat = df.to_numpy().flatten()
+
+        # load journey count matrix
+        journey_count_matrix_path = (
+            self.data_path
+            / "journey_counts_matrices"
+            / f"interval_{self.time_interval}_journey_counts_matrix.xlsx"
+        )
+        df = pd.read_excel(journey_count_matrix_path, index_col=0)
+        journey_count_matrix_flat = df.to_numpy().flatten()
+
+        # load time matrix
+        time_matrix_path = (
+            self.data_path
+            / "time_matrices"
+            / f"interval_{self.time_interval}_time_matrix.xlsx"
+        )
+        df = pd.read_excel(time_matrix_path, index_col=0)
+        time_matrix_flat = df.to_numpy().flatten()
+
         if self.num_indices == 3:
-            # load distance matrix
-            distance_matrix_path = (
-                self.data_path / "distance_matrices" / "distance_matrix.xlsx"
-            )
-            df = pd.read_excel(distance_matrix_path, index_col=0)
-            distance_matrix_flat = df.to_numpy().flatten()
-
-            # load journey count matrix
-            journey_count_matrix_path = (
-                self.data_path
-                / "journey_counts_matrices"
-                / f"interval_{self.time_interval}_journey_counts_matrix.xlsx"
-            )
-            df = pd.read_excel(journey_count_matrix_path, index_col=0)
-            journey_count_matrix_flat = df.to_numpy().flatten()
-
-            # load time matrix
-            time_matrix_path = (
-                self.data_path
-                / "time_matrices"
-                / f"interval_{self.time_interval}_time_matrix.xlsx"
-            )
-            df = pd.read_excel(time_matrix_path, index_col=0)
-            time_matrix_flat = df.to_numpy().flatten()
-
             # stack flattened matrices as columns
             X = np.column_stack(
                 (
@@ -102,6 +112,27 @@ class ANFIS:
                 )
             ).astype(float)
             return X
+
+        # load index4 matrix
+        index4_matrix_path = self.data_path / "index4" / "index4_matrix.xlsx"
+        df = pd.read_excel(index4_matrix_path, index_col=0)
+        index4_matrix = df.to_numpy()
+        if not self.index4_diag:
+            diag_vals = np.diag(index4_matrix)
+            index4_matrix = (diag_vals[:, None] + diag_vals[None, :]) / 2
+        index4_matrix = index4_matrix.flatten()
+
+        # stack flattened matrices as columns
+        X = np.column_stack(
+            (
+                # add 1e-6 for numerical stability
+                journey_count_matrix_flat + 1e-6,
+                time_matrix_flat + 1e-6,
+                distance_matrix_flat + 1e-6,
+                index4_matrix + 1e-6,
+            )
+        )
+        return X
 
     def _get_lookup(self) -> dict[tuple[str, str, str], float]:
         if self.num_indices == 3:
@@ -126,16 +157,47 @@ class ANFIS:
                     str(row["distance_category"]).strip(),
                 )
                 r = float(row["rating"])
-                lookup[key] = (
-                    (r - rating_min) / (rating_max - rating_min)
-                    if rating_max > rating_min
-                    else 0.0
-                )
+                lookup[key] = (r - rating_min) / (rating_max - rating_min)
             return lookup
+        mapper_path = (
+            Path(__file__).parents[2] / "data" / "mappers" / "anketa_4_indikatora.xlsx"
+        )
+        mapper_df = pd.read_excel(mapper_path)
+        mapper_df = mapper_df.drop(columns=["Br"], errors="ignore")
+        mapper_df = mapper_df.rename(columns=self.column_map)
+
+        # normalize to [0, 1] and store as float
+        rating_min = 1
+        rating_max = 6
+        lookup = {}
+        for _, row in mapper_df.iterrows():
+            key = (
+                str(row["journey_count_category"]).strip(),
+                str(row["duration_category"]).strip(),
+                str(row["distance_category"]).strip(),
+                str(row["availability_category"]).strip(),
+            )
+            r = float(row["rating"])
+            lookup[key] = (r - rating_min) / (rating_max - rating_min)
+        return lookup
 
     def _get_Y(
         self, X: np.ndarray, lookup: dict[tuple[str, str, str], float]
     ) -> np.ndarray:
+        if self.num_indices == 3:
+            return np.array(
+                [
+                    lookup[
+                        (
+                            self.journey_count_cats[ANFIS._discretize(X[i, 0])],
+                            self.duration_cats[ANFIS._discretize(X[i, 1])],
+                            self.distance_cats[ANFIS._discretize(X[i, 2])],
+                        )
+                    ]
+                    for i in range(len(X))
+                ],
+                dtype=float,
+            )
         return np.array(
             [
                 lookup[
@@ -143,6 +205,7 @@ class ANFIS:
                         self.journey_count_cats[ANFIS._discretize(X[i, 0])],
                         self.duration_cats[ANFIS._discretize(X[i, 1])],
                         self.distance_cats[ANFIS._discretize(X[i, 2])],
+                        self.index4_cats[ANFIS._discretize(X[i, 3])],
                     )
                 ]
                 for i in range(len(X))

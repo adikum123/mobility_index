@@ -64,6 +64,7 @@ class DataProcessor:
                 return 360
             return int(azimuth)
         except Exception:
+            print(f"Could not process azimuth: {azimuth}")
             return None
 
     def group_by_user(self) -> DefaultDict[int, list[CSVDataRow]]:

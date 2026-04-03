@@ -6,12 +6,13 @@ for time_interval in range(8):
     model = ANFIS(
         num_indices=4,
         num_epochs=10,
-        learning_rate=0.1,
+        learning_rate=0.25,
         membership_functions="triangular",
         optimizer="hybrid",
         time_interval=time_interval,
         loss_function="mse",
         index4_diag=False,
+        batch_size=32,
     )
     model.train()
     metrics_by_time_interval[time_interval] = model.test()

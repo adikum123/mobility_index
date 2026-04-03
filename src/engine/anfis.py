@@ -1,10 +1,10 @@
 import time
 from pathlib import Path
 
-import anfis_toolbox as atb
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from anfis_toolbox import ANFISRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
@@ -20,6 +20,7 @@ class ANFIS:
         optimizer: str,
         time_interval: int,
         loss_function: str,
+        batch_size: int,
         index4_diag: bool = None,
     ):
         assert num_indices in [3, 4], "Number of indices must be 3 or 4"
@@ -32,13 +33,14 @@ class ANFIS:
         self.membership_functions = membership_functions
         self.optimizer = optimizer
         self.time_interval = time_interval
-        self.model = atb.ANFISRegressor(
+        self.model = ANFISRegressor(
             n_mfs=3,
             epochs=num_epochs,
             learning_rate=learning_rate,
             mf_type=membership_functions,
             optimizer=optimizer,
             loss=loss_function,
+            batch_size=batch_size,
         )
         self.base_dir = Path(__file__).parents[2]
         self.data_path = self.base_dir / "data" / "output"

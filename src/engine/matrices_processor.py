@@ -17,10 +17,15 @@ class MatricesProcessor:
         self.data_processor = DataProcessor()
 
     def save_matrix(
-        self, matrix: np.ndarray, filename: str, sheet_name: str, output_subdir: str
+        self,
+        matrix: np.ndarray,
+        filename: str,
+        sheet_name: str,
+        output_subdir: str,
+        azimuth_offset_km: float = 0.0,
     ) -> None:
         # save matrix
-        matrix = MatricesProcessor.normalize_matrix(matrix)
+        matrix = MatricesProcessor.normalize_matrix(matrix=matrix)
 
         # create dir if not exists
         save_dir = OUTPUT_BASE / output_subdir
@@ -38,6 +43,9 @@ class MatricesProcessor:
         with pd.ExcelWriter(filepath, engine=engine) as writer:
             df.to_excel(writer, sheet_name=sheet_name)
         print(f"Saved {sheet_name.lower()} to {filepath}")
+
+        # set azimuth offset km
+        self.azimuth_offset_km = azimuth_offset_km
 
     def compute_single_time_matrix_from_journeys(
         self, journeys: list[Journey]
@@ -75,19 +83,29 @@ class MatricesProcessor:
             )
 
     def compute_distance_matrix(self) -> None:
+        """Compute pairwise geodesic distance matrix.
+
+        Parameters
+        ----------
+        azimuth_offset_km : float
+            If > 0, each station's position is shifted along its azimuth
+            bearing by this distance (km) before distances are computed.
+            This yields a more realistic model when multiple sector
+            antennas share the same tower coordinates.
+        """
         n = len(self.data_processor.switch_ids)
         coords = {
-            s.switch_id: (s.latitude, s.longitude) for s in self.data_processor.stations
+            s.switch_id: s.adjusted_coordinates(offset_km=self.azimuth_offset_km)
+            for s in self.data_processor.stations
         }
-        matrix = np.zeros((n, n))
 
+        matrix = np.zeros((n, n))
         for i, sid_i in enumerate(self.data_processor.switch_ids):
             for j, sid_j in enumerate(self.data_processor.switch_ids):
                 if i == j:
                     continue
                 matrix[i][j] = geodesic(coords[sid_i], coords[sid_j]).kilometers
 
-        print(matrix)
         self.save_matrix(
             matrix=matrix,
             filename="distance_matrix.xlsx",

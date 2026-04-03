@@ -8,7 +8,15 @@ from ..engine.matrices_processor import MatricesProcessor
 from .fetch_data import AMENITIES_CONFIG, BASE_PATH
 
 
-def compute_and_save_index4():
+def compute_and_save_index4(azimuth_offset_km: float = 0.0):
+    """Compute Index-4 (amenity accessibility) diagonal matrix.
+
+    Parameters
+    ----------
+    azimuth_offset_km : float
+        If > 0, each station's position is shifted along its azimuth
+        bearing by this distance (km) before proximity filtering.
+    """
     print("Computing index...")
     matrices_processor = MatricesProcessor()
     data_processor = matrices_processor.data_processor
@@ -22,16 +30,13 @@ def compute_and_save_index4():
         for group, subgroups in AMENITIES_CONFIG.items():
             for subgroup, subgroup_config in subgroups.items():
                 print(f"Processing group {group} and subgroup {subgroup}...")
-                # weights are defined in the config file
                 weights = subgroup_config["weights"]
 
-                # read data for current subgroup
                 filename = f"{group}__{subgroup}.csv"
                 filepath = BASE_PATH / filename
                 subgroup_amenities = pd.read_csv(filepath).to_dict(orient="records")
 
-                # filter put where disance > 1.5km
-                station_point = (station.latitude, station.longitude)
+                station_point = station.adjusted_coordinates(azimuth_offset_km)
                 relevant_amenities = [
                     x
                     for x in subgroup_amenities

@@ -22,16 +22,21 @@ class MatricesProcessor:
         filename: str,
         sheet_name: str,
         output_subdir: str,
-        azimuth_offset_km: float = 0.0,
     ) -> None:
-        # save matrix
-        matrix = MatricesProcessor.normalize_matrix(matrix=matrix)
+        """Normalize a single matrix on its own min/max, then save."""
+        matrix = MatricesProcessor.normalize_matrix(matrix)
+        self._save_matrix_to_excel(matrix, filename, sheet_name, output_subdir)
 
-        # create dir if not exists
+    def _save_matrix_to_excel(
+        self,
+        matrix: np.ndarray,
+        filename: str,
+        sheet_name: str,
+        output_subdir: str,
+    ) -> None:
         save_dir = OUTPUT_BASE / output_subdir
         os.makedirs(save_dir, exist_ok=True)
 
-        # convert to dataframe and save to excel
         df = pd.DataFrame(
             matrix,
             index=self.data_processor.switch_ids,
@@ -43,9 +48,6 @@ class MatricesProcessor:
         with pd.ExcelWriter(filepath, engine=engine) as writer:
             df.to_excel(writer, sheet_name=sheet_name)
         print(f"Saved {sheet_name.lower()} to {filepath}")
-
-        # set azimuth offset km
-        self.azimuth_offset_km = azimuth_offset_km
 
     def compute_single_time_matrix_from_journeys(
         self, journeys: list[Journey]
@@ -71,18 +73,22 @@ class MatricesProcessor:
         return matrix
 
     def compute_time_matrices(self) -> None:
+        matrices = []
         for interval in range(8):
             journeys = self.data_processor.by_interval[interval]
-            matrix = self.compute_single_time_matrix_from_journeys(journeys=journeys)
-            filename = f"interval_{interval}_time_matrix.xlsx"
-            self.save_matrix(
+            matrices.append(self.compute_single_time_matrix_from_journeys(journeys))
+
+        global_min, global_max = self._global_min_max(matrices)
+        for interval, matrix in enumerate(matrices):
+            matrix = MatricesProcessor.normalize_matrix(matrix, global_min, global_max)
+            self._save_matrix_to_excel(
                 matrix=matrix,
-                filename=filename,
+                filename=f"interval_{interval}_time_matrix.xlsx",
                 sheet_name="IntervalMatrix",
                 output_subdir="time_matrices",
             )
 
-    def compute_distance_matrix(self) -> None:
+    def compute_distance_matrix(self, azimuth_offset_km: float = 0.0) -> None:
         """Compute pairwise geodesic distance matrix.
 
         Parameters
@@ -95,7 +101,7 @@ class MatricesProcessor:
         """
         n = len(self.data_processor.switch_ids)
         coords = {
-            s.switch_id: s.adjusted_coordinates(offset_km=self.azimuth_offset_km)
+            s.switch_id: s.adjusted_coordinates(azimuth_offset_km)
             for s in self.data_processor.stations
         }
 
@@ -134,25 +140,44 @@ class MatricesProcessor:
         return matrix
 
     def compute_journey_count_matrices(self) -> None:
+        matrices = []
         for interval in range(8):
             journeys = self.data_processor.by_interval[interval]
-            matrix = self.compute_single_journey_count_matrix_from_journeys(
-                journeys=journeys
+            matrices.append(
+                self.compute_single_journey_count_matrix_from_journeys(journeys)
             )
-            filename = f"interval_{interval}_journey_counts_matrix.xlsx"
-            self.save_matrix(
+
+        global_min, global_max = self._global_min_max(matrices)
+        for interval, matrix in enumerate(matrices):
+            matrix = MatricesProcessor.normalize_matrix(matrix, global_min, global_max)
+            self._save_matrix_to_excel(
                 matrix=matrix,
-                filename=filename,
+                filename=f"interval_{interval}_journey_counts_matrix.xlsx",
                 sheet_name="JourneyCounts",
                 output_subdir="journey_counts_matrices",
             )
 
     @staticmethod
-    def normalize_matrix(matrix: np.ndarray) -> np.ndarray:
-        """Normalize a matrix using (x - min) / (max - min)."""
-        min_val = matrix.min()
-        max_val = matrix.max()
+    def _global_min_max(matrices: list[np.ndarray]) -> tuple[float, float]:
+        """Compute the global min and max across a list of matrices."""
+        global_min = min(m.min() for m in matrices)
+        global_max = max(m.max() for m in matrices)
+        return global_min, global_max
+
+    @staticmethod
+    def normalize_matrix(
+        matrix: np.ndarray,
+        min_val: float = None,
+        max_val: float = None,
+    ) -> np.ndarray:
+        """Normalize a matrix using (x - min) / (max - min).
+
+        If min_val/max_val are not provided, uses the matrix's own bounds.
+        """
+        if min_val is None:
+            min_val = matrix.min()
+        if max_val is None:
+            max_val = matrix.max()
         if max_val == min_val:
-            # Avoid division by zero; all values are equal
             return matrix
         return (matrix - min_val) / (max_val - min_val)

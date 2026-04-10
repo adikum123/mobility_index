@@ -1,4 +1,6 @@
+import os
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -7,9 +9,14 @@ from geopy.distance import distance
 from ..engine.matrices_processor import MatricesProcessor
 from .fetch_data import AMENITIES_CONFIG, BASE_PATH
 
+OUTPUT_BASE = Path(__file__).parents[2] / "data" / "output"
+
 
 def compute_and_save_index4(azimuth_offset_km: float = 0.0):
-    """Compute Index-4 (amenity accessibility) diagonal matrix.
+    """Compute Index-4 (amenity accessibility) per-station array.
+
+    Saves a 1-D array where position *i* holds the accessibility score
+    for station *i* (ordered by switch_id).
 
     Parameters
     ----------
@@ -47,19 +54,24 @@ def compute_and_save_index4(azimuth_offset_km: float = 0.0):
                     "beta"
                 ] * weights["wH"] * min(num, weights["c_cap"])
 
-    # Create diagonal matrix from scores
-    n = len(data_processor.switch_ids)
-    matrix = np.zeros((n, n))
-    for i, switch_id in enumerate(data_processor.switch_ids):
-        matrix[i, i] = station_scores.get(switch_id, 0.0)
-
-    # Save using MatricesProcessor
-    matrices_processor.save_matrix(
-        matrix=matrix,
-        filename="index4_matrix.xlsx",
-        sheet_name="Index4",
-        output_subdir="index4",
+    scores = np.array(
+        [station_scores.get(sid, 0.0) for sid in data_processor.switch_ids]
     )
+
+    # normalize to [0, 1]
+    min_val, max_val = scores.min(), scores.max()
+    if max_val != min_val:
+        scores = (scores - min_val) / (max_val - min_val)
+
+    # save as single-column xlsx
+    save_dir = OUTPUT_BASE / "index4"
+    os.makedirs(save_dir, exist_ok=True)
+    filepath = save_dir / "index4_array.xlsx"
+    df = pd.DataFrame({"score": scores}, index=data_processor.switch_ids)
+    df.index.name = "switch_id"
+    with pd.ExcelWriter(filepath, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="Index4")
+    print(f"Saved index4 array to {filepath}")
 
 
 if __name__ == "__main__":

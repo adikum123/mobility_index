@@ -21,7 +21,7 @@ class ANFIS:
         time_interval: int,
         loss_function: str,
         batch_size: int,
-        index4_diag: bool = None,
+        index4_mode: str = None,
     ):
         assert num_indices in [3, 4], "Number of indices must be 3 or 4"
         assert isinstance(time_interval, int) and time_interval in range(
@@ -63,11 +63,11 @@ class ANFIS:
         if self.num_indices == 4:
             self.column_map["Dostupnost"] = "availability_category"
 
-        # if 4 indices are used check index4_diag must be provided
+        _VALID_INDEX4_MODES = ("average", "destination")
         assert num_indices == 3 or (
-            num_indices == 4 and index4_diag is not None
-        ), "If 4 indices are used index4_diag must be provided"
-        self.index4_diag = index4_diag
+            num_indices == 4 and index4_mode in _VALID_INDEX4_MODES
+        ), f"If 4 indices are used, index4_mode must be one of {_VALID_INDEX4_MODES}"
+        self.index4_mode = index4_mode
 
     @staticmethod
     def _discretize(value: float) -> int:
@@ -76,6 +76,20 @@ class ANFIS:
         if value < 2 / 3:
             return 1
         return 2
+
+    def _expand_index4(self, values: np.ndarray) -> np.ndarray:
+        """Expand a 1-D per-station array into an n x n matrix.
+
+        The expansion strategy is controlled by ``self.index4_mode``:
+        - "average":     matrix[i,j] = (v[i] + v[j]) / 2
+        - "destination": matrix[i,j] = v[j]
+        """
+        v = values
+        if self.index4_mode == "average":
+            return (v[:, None] + v[None, :]) / 2
+        if self.index4_mode == "destination":
+            return np.broadcast_to(v[None, :], (len(v), len(v))).copy()
+        raise ValueError(f"Unknown index4_mode: {self.index4_mode!r}")
 
     def _get_X(self) -> np.ndarray:
         # load distance matrix
@@ -115,14 +129,11 @@ class ANFIS:
             ).astype(float)
             return X
 
-        # load index4 matrix
-        index4_matrix_path = self.data_path / "index4" / "index4_matrix.xlsx"
-        df = pd.read_excel(index4_matrix_path, index_col=0)
-        index4_matrix = df.to_numpy()
-        if not self.index4_diag:
-            diag_vals = np.diag(index4_matrix)
-            index4_matrix = (diag_vals[:, None] + diag_vals[None, :]) / 2
-        index4_matrix = index4_matrix.flatten()
+        # load index4 per-station array and expand to n×n matrix
+        index4_array_path = self.data_path / "index4" / "index4_array.xlsx"
+        df = pd.read_excel(index4_array_path, index_col=0)
+        index4_values = df["score"].to_numpy()
+        index4_matrix = self._expand_index4(index4_values).flatten()
 
         # stack flattened matrices as columns
         X = np.column_stack(

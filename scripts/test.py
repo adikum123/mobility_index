@@ -11,7 +11,7 @@ for time_interval in range(8):
         optimizer="hybrid",
         time_interval=time_interval,
         loss_function="mse",
-        index4_diag=False,
+        index4_mode="average",
         batch_size=32,
     )
     model.train()

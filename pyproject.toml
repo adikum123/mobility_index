@@ -20,6 +20,7 @@ dependencies = [
     "matplotlib==3.10.8",
     "matlab>=0.1",
     "peewee>=4.0.1",
+    "osmnx>=2.1.0",
 ]
 
 [build-system]

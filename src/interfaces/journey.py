@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import DefaultDict
+
+from geopy.distance import geodesic
 
 from .csv_data_row import CSVDataRow
 
@@ -8,10 +12,33 @@ from .csv_data_row import CSVDataRow
 class Journey:
     start: CSVDataRow
     end: CSVDataRow
-    datetime_diff_seconds: int
+    datetime_diff_seconds: float
     vincents_distance: float
     interval_num: int
     average_speed: float
+
+    @staticmethod
+    def from_records(departure: CSVDataRow, arrival: CSVDataRow) -> Journey | None:
+        """Build a journey from a departure and arrival record.
+
+        Returns None when the time delta is zero (no real transition).
+        """
+        dt_seconds = (arrival.datetime - departure.datetime).total_seconds()
+        if dt_seconds == 0:
+            return None
+
+        start_point = (departure.latitude, departure.longitude)
+        end_point = (arrival.latitude, arrival.longitude)
+        dist_km = geodesic(start_point, end_point).kilometers
+
+        return Journey(
+            start=departure,
+            end=arrival,
+            datetime_diff_seconds=dt_seconds,
+            vincents_distance=dist_km,
+            interval_num=arrival.interval_num,
+            average_speed=dist_km / (dt_seconds / 3600),
+        )
 
     def remove_journey(self, filter_statistics: DefaultDict[str, int]) -> bool:
         """

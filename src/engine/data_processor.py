@@ -6,9 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, DefaultDict
 
-from geopy.distance import geodesic
-
-from ..interfaces import CSVDataRow, Journey, Station
+from ..interfaces import CSVDataRow, Journey, Station, StationVisit
 from ..utils import load_data
 
 # Global path to the data file
@@ -25,9 +23,9 @@ class DataProcessor:
         raw_data = load_data(file_path=DATA_FILE_PATH)
         self.processed_raw_data = self.process_raw_data(raw_data=raw_data)
 
-        # from list of processed objects get list of journeys
+        # group by user, then derive visits and journeys in one pass
         self.by_user = self.group_by_user()
-        self.journeys = self.compute_journeys()
+        self.visits, self.journeys = self.compute_visits_and_journeys()
         self.by_interval = self.group_journeys_by_interval()
 
         # get stations and station ids
@@ -62,6 +60,8 @@ class DataProcessor:
         try:
             if azimuth == "OMNI":
                 return 360
+            if azimuth == "INDOOR":
+                return None
             return int(azimuth)
         except Exception:
             print(f"Could not process azimuth: {azimuth}")
@@ -73,56 +73,56 @@ class DataProcessor:
             by_user[item.user_id].append(item)
         return by_user
 
-    def compute_journeys(self) -> list[Journey]:
-        journeys = []
-        for _, values in self.by_user.items():
-            sorted_values = list(set(sorted(values, key=lambda x: x.datetime)))
-            for idx in range(0, len(sorted_values) - 1):
-                # get start and end object
-                start = sorted_values[idx]
-                end = sorted_values[idx + 1]
+    def compute_visits_and_journeys(
+        self,
+    ) -> tuple[list[StationVisit], list[Journey]]:
+        """Single pass per user: collapse into station visits, then derive
+        journeys as transitions between consecutive visits.
 
-                # get start and end point
-                start_point = (start.latitude, start.longitude)
-                end_point = (end.latitude, end.longitude)
+        A journey's *start* is the last record of the departing visit and
+        its *end* is the first record of the arriving visit.
+        """
+        all_visits: list[StationVisit] = []
+        journeys: list[Journey] = []
 
-                # get distance and duration
-                datetime_diff_seconds = (end.datetime - start.datetime).total_seconds()
+        for _, records in self.by_user.items():
+            sorted_records = sorted(set(records), key=lambda r: r.datetime)
+            if not sorted_records:
+                continue
 
-                # exclude joruneys with 0 seconds
-                if datetime_diff_seconds == 0:
-                    continue
+            # --- build visits for this user ---
+            user_visits: list[StationVisit] = []
+            run: list[CSVDataRow] = [sorted_records[0]]
+            for record in sorted_records[1:]:
+                if record.switch_id == run[-1].switch_id:
+                    run.append(record)
+                else:
+                    user_visits.append(StationVisit.from_records(run))
+                    run = [record]
+            user_visits.append(StationVisit.from_records(run))
+            all_visits.extend(user_visits)
 
-                vincents_distance = geodesic(start_point, end_point).kilometers
-                try:
-                    journeys.append(
-                        Journey(
-                            start=start,
-                            end=end,
-                            datetime_diff_seconds=datetime_diff_seconds,
-                            vincents_distance=vincents_distance,
-                            interval_num=end.interval_num,
-                            average_speed=vincents_distance
-                            / (datetime_diff_seconds / 3600),
-                        )
-                    )
-                except Exception as e:
-                    raise ValueError(
-                        f"Failed to construct journey due to: {str(e)} for:\n{start}\n{end}"
-                    )
+            # --- derive journeys between consecutive visits ---
+            for i in range(len(user_visits) - 1):
+                journey = Journey.from_records(
+                    departure=user_visits[i].records[-1],
+                    arrival=user_visits[i + 1].records[0],
+                )
+                if journey is not None:
+                    journeys.append(journey)
 
-        # filter journeys before returning
+        # filter journeys
         filter_statistics = defaultdict(int)
-        filtered_joruneys = [
-            x
-            for x in journeys
-            if not x.remove_journey(filter_statistics=filter_statistics)
+        filtered_journeys = [
+            j
+            for j in journeys
+            if not j.remove_journey(filter_statistics=filter_statistics)
         ]
-        num_filtered, num_total = len(filtered_joruneys), len(journeys)
+        num_filtered, num_total = len(filtered_journeys), len(journeys)
         print(
-            f"Filtered: {num_filtered}/{num_total} ({100 * num_filtered / num_total  :.2f} %) journeys with following filter statistics:\n{json.dumps(filter_statistics, indent=4)}"
+            f"Filtered: {num_filtered}/{num_total} ({100 * num_filtered / num_total:.2f}%) journeys with following filter statistics:\n{json.dumps(filter_statistics, indent=4)}"
         )
-        return filtered_joruneys
+        return all_visits, filtered_journeys
 
     def get_station_data(self) -> tuple[list[Station], list[int]]:
         stations, switch_ids = [], set()

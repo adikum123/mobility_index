@@ -4,24 +4,30 @@ from anfis_toolbox import ANFISRegressor
 
 from .database import ANFISModel, init_database
 
-MODELS_ROOT = Path(__file__).resolve().parents[2] / "models"
-
 
 class ModelRegistry:
 
     def __init__(self):
         self.db = init_database()
 
-    def save_model(
+    def register_model(
+        self,
+        model_id: str,
+        path: str,
+        config: dict,
+    ):
+        """Insert or update the model record in the database."""
+        ANFISModel.insert(  # pylint: disable=no-value-for-parameter
+            model_id=model_id,
+            path=path,
+            config=config,
+        ).on_conflict_replace().execute()
+
+    def save_model_file(
         self,
         model: ANFISRegressor,
-        model_id: str,
-        train_config: dict[str, str],
-        metrics: dict[str:str],
+        path: str | Path,
     ):
-        """Saves model checkpoint and saves it to the database"""
-        path = MODELS_ROOT / f"{model_id}.pkl"
-        ANFISModel.get_or_create(
-            model_id=model_id, train_config=train_config, metrics=metrics
-        )
+        """Persist the trained model weights to disk."""
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         model.save(path)

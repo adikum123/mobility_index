@@ -6,7 +6,6 @@ Uses Peewee ORM with SQLite for persistent storage.
 
 from datetime import datetime
 from pathlib import Path
-from tkinter import CASCADE
 
 from peewee import (
     CharField,
@@ -59,37 +58,34 @@ class BaseModel(Model):
 
 
 class ANFISModel(BaseModel):
-    model_id: CharField(primary_key=True)
-    path: CharField
-    updated_at: DateTimeField(default=datetime.now)
-    config: JSONField
+    model_id = CharField(primary_key=True)
+    path = CharField()
+    updated_at = DateTimeField(default=datetime.now)
+    config = JSONField()
 
     class Meta:
-
         table_name = "anfis_model"
 
 
 class TrainRun(BaseModel):
-    train_run_id: CharField
-    model_id: ForeignKeyField(ANFISModel, on_delete=CASCADE)
-    train_config: JSONField
-    metrics: JSONField
-    updated_at: DateTimeField(default=datetime.now)
+    train_run_id = CharField()
+    model_id = ForeignKeyField(ANFISModel, on_delete="CASCADE")
+    train_config = JSONField()
+    metrics = JSONField()
+    updated_at = DateTimeField(default=datetime.now)
 
     class Meta:
-
         table_name = "train_run"
         primary_key = CompositeKey("train_run_id", "model_id")
 
 
 class TestRun(BaseModel):
-    test_run_id: CharField
-    model_id: ForeignKeyField(ANFISModel, on_delete=CASCADE)
-    metrics: JSONField
-    updated_at: DateTimeField(default=datetime.now)
+    test_run_id = CharField()
+    model_id = ForeignKeyField(ANFISModel, on_delete="CASCADE")
+    metrics = JSONField()
+    updated_at = DateTimeField(default=datetime.now)
 
     class Meta:
-
         table_name = "test_run"
         primary_key = CompositeKey("model_id", "test_run_id")
 

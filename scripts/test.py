@@ -13,6 +13,8 @@ for time_interval in range(8):
         loss_function="mse",
         index4_mode="average",
         batch_size=32,
+        lr_schedule="cosine",
+        min_lr=0.01,
     )
     model.train()
     metrics_by_time_interval[time_interval] = model.test()

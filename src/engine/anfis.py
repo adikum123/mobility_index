@@ -8,6 +8,11 @@ from anfis_toolbox import ANFISRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
+from ..database.model_registry import ModelRegistry
+from ..database.test_run_registry import TestRunRegistry
+from ..database.train_run_registry import TrainRunRegistry
+from .scheduled_trainer import ScheduledHybridTrainer
+
 
 class ANFIS:
 
@@ -22,6 +27,9 @@ class ANFIS:
         loss_function: str,
         batch_size: int,
         index4_mode: str = None,
+        lr_schedule: str | None = None,
+        min_lr: float = 1e-5,
+        num_experts: int | None = None,
     ):
         assert num_indices in [3, 4], "Number of indices must be 3 or 4"
         assert isinstance(time_interval, int) and time_interval in range(
@@ -33,12 +41,18 @@ class ANFIS:
         self.membership_functions = membership_functions
         self.optimizer = optimizer
         self.time_interval = time_interval
+        self.lr_schedule = lr_schedule
+        assert self.lr_schedule is not None, "lr_schedule must be provided"
+        trainer = ScheduledHybridTrainer(
+            learning_rate=learning_rate,
+            epochs=num_epochs,
+            schedule=lr_schedule,
+            min_lr=min_lr,
+        )
         self.model = ANFISRegressor(
             n_mfs=3,
-            epochs=num_epochs,
-            learning_rate=learning_rate,
             mf_type=membership_functions,
-            optimizer=optimizer,
+            optimizer=trainer,
             loss=loss_function,
             batch_size=batch_size,
         )
@@ -46,6 +60,7 @@ class ANFIS:
         self.data_path = self.base_dir / "data" / "output"
         self.plots_path = self.base_dir / "plots"
         self.models_dir = self.base_dir / "models"
+        self.num_experts = num_experts
 
         # discretize normalized [0,1] values into low/mid/high bins
         self.journey_count_cats = ("Mali", "Srednji", "Veliki")
@@ -68,6 +83,33 @@ class ANFIS:
             num_indices == 4 and index4_mode in _VALID_INDEX4_MODES
         ), f"If 4 indices are used, index4_mode must be one of {_VALID_INDEX4_MODES}"
         self.index4_mode = index4_mode
+
+        self.model_id = f"anfis_{num_indices}i_t{time_interval}"
+        self._config = {
+            "num_indices": num_indices,
+            "num_epochs": num_epochs,
+            "learning_rate": learning_rate,
+            "membership_functions": membership_functions,
+            "optimizer": optimizer,
+            "time_interval": time_interval,
+            "loss_function": loss_function,
+            "batch_size": batch_size,
+            "index4_mode": index4_mode,
+            "lr_schedule": lr_schedule,
+            "min_lr": min_lr,
+        }
+        model_path = str(
+            self.models_dir / f"anfis_model_time_interval_{time_interval}.pkl"
+        )
+        self._model_registry = ModelRegistry()
+        self._train_run_registry = TrainRunRegistry()
+        self._test_run_registry = TestRunRegistry()
+        self._model_path = model_path
+        self._model_registry.register_model(
+            model_id=self.model_id,
+            path=model_path,
+            config=self._config,
+        )
 
     @staticmethod
     def _discretize(value: float) -> int:
@@ -147,7 +189,12 @@ class ANFIS:
         )
         return X
 
-    def _get_lookup(self) -> dict[tuple[str, str, str], float]:
+    def _get_lookup(self) -> list[dict[tuple[str, ...], float]]:
+        """Build one lookup dict per expert sheet.
+
+        Returns a list of dicts, each mapping category tuples to normalized
+        ratings from that expert.
+        """
         if self.num_indices == 3:
             mapper_path = (
                 Path(__file__).parents[2]
@@ -155,48 +202,45 @@ class ANFIS:
                 / "mappers"
                 / "anketa_3_indikatora.xlsx"
             )
-            mapper_df = pd.read_excel(mapper_path)
-            mapper_df = mapper_df.drop(columns=["Br"], errors="ignore")
-            mapper_df = mapper_df.rename(columns=self.column_map)
+            key_cols = (
+                "journey_count_category",
+                "duration_category",
+                "distance_category",
+            )
+        else:
+            mapper_path = (
+                Path(__file__).parents[2]
+                / "data"
+                / "mappers"
+                / "anketa_4_indikatora.xlsx"
+            )
+            key_cols = (
+                "journey_count_category",
+                "duration_category",
+                "distance_category",
+                "availability_category",
+            )
 
-            # normalize rating to [0, 1] and store as float
-            rating_min = 1
-            rating_max = 6
-            lookup = {}
-            for _, row in mapper_df.iterrows():
-                key = (
-                    str(row["journey_count_category"]).strip(),
-                    str(row["duration_category"]).strip(),
-                    str(row["distance_category"]).strip(),
-                )
-                r = float(row["rating"])
-                lookup[key] = (r - rating_min) / (rating_max - rating_min)
-            return lookup
-        mapper_path = (
-            Path(__file__).parents[2] / "data" / "mappers" / "anketa_4_indikatora.xlsx"
-        )
-        mapper_df = pd.read_excel(mapper_path)
-        mapper_df = mapper_df.drop(columns=["Br"], errors="ignore")
-        mapper_df = mapper_df.rename(columns=self.column_map)
-
-        # normalize to [0, 1] and store as float
+        all_sheets = pd.read_excel(mapper_path, sheet_name=None)
         rating_min = 1
         rating_max = 6
-        lookup = {}
-        for _, row in mapper_df.iterrows():
-            key = (
-                str(row["journey_count_category"]).strip(),
-                str(row["duration_category"]).strip(),
-                str(row["distance_category"]).strip(),
-                str(row["availability_category"]).strip(),
-            )
-            r = float(row["rating"])
-            lookup[key] = (r - rating_min) / (rating_max - rating_min)
-        return lookup
 
-    def _get_Y(
-        self, X: np.ndarray, lookup: dict[tuple[str, str, str], float]
-    ) -> np.ndarray:
+        lookups: list[dict[tuple[str, ...], float]] = []
+        for idx, mapper_df in enumerate(all_sheets.values()):
+            if self.num_experts is not None and idx >= self.num_experts:
+                break
+            mapper_df = mapper_df.drop(columns=["Br"], errors="ignore")
+            mapper_df = mapper_df.rename(columns=self.column_map)
+            lookup = {}
+            for _, row in mapper_df.iterrows():
+                key = tuple(str(row[c]).strip() for c in key_cols)
+                r = float(row["rating"])
+                lookup[key] = (r - rating_min) / (rating_max - rating_min)
+            lookups.append(lookup)
+
+        return lookups
+
+    def _get_Y(self, X: np.ndarray, lookup: dict[tuple[str, ...], float]) -> np.ndarray:
         if self.num_indices == 3:
             return np.array(
                 [
@@ -226,17 +270,14 @@ class ANFIS:
             dtype=float,
         )
 
-    def set_data(
-        self,
-    ) -> (
-        tuple[np.ndarray, np.ndarray, np.ndarray]
-        | tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-    ):
-        X = self._get_X()
-        lookup = self._get_lookup()
-        Y = self._get_Y(X, lookup)
-        self.X = X
-        self.Y = Y
+    def set_data(self) -> None:
+        X_base = self._get_X()
+        lookups = self._get_lookup()
+        num_experts = len(lookups)
+        print(f"Loading ratings from {num_experts} experts (data augmentation)")
+
+        self.X = np.tile(X_base, (num_experts, 1))
+        self.Y = np.concatenate([self._get_Y(X_base, lookup) for lookup in lookups])
 
     def set_train_val_data(self, random_state: int = 42):
         """
@@ -288,9 +329,9 @@ class ANFIS:
             f"Training time: {end_time - start_time} seconds for {self.num_epochs} epochs"
         )
 
-        # save model
-        self.model.save(
-            self.models_dir / f"anfis_model_time_interval_{self.time_interval}.pkl"
+        self._model_registry.save_model_file(
+            model=self.model,
+            path=self._model_path,
         )
 
         # extract plots from the training history
@@ -310,6 +351,25 @@ class ANFIS:
             self.plots_path / f"training_loss_time_interval_{self.time_interval}.png"
         )
         plt.close(fig)
+
+        train_duration = end_time - start_time
+        train_config = {
+            **self._config,
+            "train_samples": len(self.X_train),
+            "val_samples": len(self.X_val),
+            "data_shape_X": list(self.X.shape),
+            "data_shape_Y": list(self.Y.shape),
+        }
+        train_metrics = {
+            "final_loss": train_loss[-1] if train_loss else None,
+            "loss_history": train_loss,
+            "train_duration_seconds": train_duration,
+        }
+        self._train_run_registry.save_train_run(
+            model_id=self.model_id,
+            train_config=train_config,
+            metrics=train_metrics,
+        )
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Predict ratings, clipped to [0, 1]."""
@@ -366,6 +426,12 @@ class ANFIS:
         metrics = {
             "r2": r2,
             "mse": mse,
-            "rmse": np.sqrt(mse),
+            "rmse": float(np.sqrt(mse)),
         }
+
+        self._test_run_registry.save_test_run(
+            model_id=self.model_id,
+            metrics=metrics,
+        )
+
         return metrics

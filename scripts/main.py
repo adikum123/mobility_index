@@ -1,26 +1,18 @@
-from src.engine import ANFIS, MatricesProcessor
-from src.index4 import compute_and_save_index4
-
-# mp = MatricesProcessor()
-# mp.compute_distance_matrix()
-# mp.compute_time_matrices()
-# mp.compute_journey_count_matrices()
-
-# compute_and_save_index4()
+from src.engine import ANFIS
 
 model = ANFIS(
-    num_indices=3,
+    num_indices=4,
     num_epochs=10,
-    learning_rate=0.25,
+    learning_rate=0.1,
     membership_functions="triangular",
     optimizer="hybrid",
     time_interval=3,
     loss_function="mse",
     index4_mode="destination",
     batch_size=256,
-    lr_schedule="cosine",
-    min_lr=0.01,
-    num_experts=3,
+    lr_schedule="exponential",
+    num_experts=2,
+    decay_rate=0.95,
 )
 model.train()
 metrics = model.test()

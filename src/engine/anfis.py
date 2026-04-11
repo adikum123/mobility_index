@@ -29,6 +29,7 @@ class ANFIS:
         index4_mode: str = None,
         lr_schedule: str | None = None,
         min_lr: float = 1e-5,
+        decay_rate: float = 0.9,
         num_experts: int | None = None,
     ):
         assert num_indices in [3, 4], "Number of indices must be 3 or 4"
@@ -48,6 +49,8 @@ class ANFIS:
             epochs=num_epochs,
             schedule=lr_schedule,
             min_lr=min_lr,
+            decay_rate=decay_rate,
+            verbose=True,
         )
         self.model = ANFISRegressor(
             n_mfs=3,
@@ -97,6 +100,7 @@ class ANFIS:
             "index4_mode": index4_mode,
             "lr_schedule": lr_schedule,
             "min_lr": min_lr,
+            "decay_rate": decay_rate,
         }
         model_path = str(
             self.models_dir / f"anfis_model_time_interval_{time_interval}.pkl"

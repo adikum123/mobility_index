@@ -8,20 +8,22 @@ class ScheduledHybridTrainer(HybridTrainer):
     """HybridTrainer with per-epoch learning rate scheduling.
 
     Supported schedules:
-    - ``"cosine"``:  smooth cosine annealing from *initial_lr* to *min_lr*
-    - ``"step"``:    halves every ⅓ of total epochs
-    - ``"linear"``:  linear decay from *initial_lr* to *min_lr*
+    - ``"exponential"``: multiply by *decay_rate* each epoch (ANFIS standard)
+    - ``"cosine"``:      smooth cosine annealing from *initial_lr* to *min_lr*
+    - ``"step"``:        halves every ⅓ of total epochs
+    - ``"linear"``:      linear decay from *initial_lr* to *min_lr*
     """
 
-    _VALID_SCHEDULES = ("cosine", "step", "linear")
+    _VALID_SCHEDULES = ("exponential", "cosine", "step", "linear")
 
     def __init__(
         self,
         learning_rate: float = 0.01,
         epochs: int = 100,
         verbose: bool = False,
-        schedule: str = "cosine",
+        schedule: str = "exponential",
         min_lr: float = 1e-5,
+        decay_rate: float = 0.9,
         **kwargs,
     ):
         super().__init__(
@@ -34,8 +36,11 @@ class ScheduledHybridTrainer(HybridTrainer):
         self.initial_lr = learning_rate
         self.min_lr = min_lr
         self.schedule = schedule
+        self.decay_rate = decay_rate
 
     def _get_lr(self, epoch: int, total_epochs: int) -> float:
+        if self.schedule == "exponential":
+            return max(self.initial_lr * (self.decay_rate ** epoch), self.min_lr)
         if self.schedule == "cosine":
             cos_decay = 0.5 * (1 + math.cos(math.pi * epoch / total_epochs))
             return self.min_lr + (self.initial_lr - self.min_lr) * cos_decay
@@ -53,7 +58,7 @@ class ScheduledHybridTrainer(HybridTrainer):
             raise ValueError("validation_frequency must be >= 1")
 
         X_train, y_train = self._prepare_training_data(model, X, y)
-        state = self.init_state(model, X_train, y_train)  # noqa: E1111
+        state = self.init_state(model, X_train, y_train)  # pylint: disable=assignment-from-none
 
         prepared_val = None
         if validation_data is not None:

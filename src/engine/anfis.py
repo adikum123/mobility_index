@@ -84,8 +84,8 @@ class ANFIS:
         ), f"If 4 indices are used, index4_mode must be one of {_VALID_INDEX4_MODES}"
         self.index4_mode = index4_mode
 
-        self.model_id = f"anfis_{num_indices}i_t{time_interval}"
-        self._config = {
+        self.model_id = f"anfis_i{num_indices}_t{time_interval}"
+        self.config = {
             "num_indices": num_indices,
             "num_epochs": num_epochs,
             "learning_rate": learning_rate,
@@ -101,14 +101,14 @@ class ANFIS:
         model_path = str(
             self.models_dir / f"anfis_model_time_interval_{time_interval}.pkl"
         )
-        self._model_registry = ModelRegistry()
-        self._train_run_registry = TrainRunRegistry()
-        self._test_run_registry = TestRunRegistry()
-        self._model_path = model_path
-        self._model_registry.register_model(
+        self.model_registry = ModelRegistry()
+        self.train_run_registry = TrainRunRegistry()
+        self.test_run_registry = TestRunRegistry()
+        self.model_path = model_path
+        self.model_registry.register_model(
             model_id=self.model_id,
             path=model_path,
-            config=self._config,
+            config=self.config,
         )
 
     @staticmethod
@@ -273,7 +273,7 @@ class ANFIS:
     def set_data(self) -> None:
         X_base = self._get_X()
         lookups = self._get_lookup()
-        num_experts = len(lookups)
+        num_experts = len(lookups) if self.num_experts is None else self.num_experts
         print(f"Loading ratings from {num_experts} experts (data augmentation)")
 
         self.X = np.tile(X_base, (num_experts, 1))
@@ -287,19 +287,6 @@ class ANFIS:
             self.X, self.Y, test_size=0.2, random_state=random_state
         )
         print(f"Train samples: {len(X_train)}, Validation samples: {len(X_val)}")
-
-        # remove rows where all inputs are 0
-        mask = ~np.all(X_train == 0, axis=1)
-        X_train = X_train[mask]
-        Y_train = Y_train[mask]
-        print(
-            f"Removed {len(X_train) - len(X_train[mask])} rows where all inputs are 0"
-        )
-        mask = ~np.all(X_val == 0, axis=1)
-        X_val = X_val[mask]
-        Y_val = Y_val[mask]
-        print(f"Removed {len(X_val) - len(X_val[mask])} rows where all inputs are 0")
-
         self.X_train = X_train
         self.X_val = X_val
         self.Y_train = Y_train
@@ -329,9 +316,10 @@ class ANFIS:
             f"Training time: {end_time - start_time} seconds for {self.num_epochs} epochs"
         )
 
-        self._model_registry.save_model_file(
+        # save model file
+        self.model_registry.save_model_file(
             model=self.model,
-            path=self._model_path,
+            path=self.model_path,
         )
 
         # extract plots from the training history
@@ -354,27 +342,23 @@ class ANFIS:
 
         train_duration = end_time - start_time
         train_config = {
-            **self._config,
+            **self.config,
             "train_samples": len(self.X_train),
             "val_samples": len(self.X_val),
             "data_shape_X": list(self.X.shape),
             "data_shape_Y": list(self.Y.shape),
+            "num_experts": self.num_experts,
         }
         train_metrics = {
             "final_loss": train_loss[-1] if train_loss else None,
             "loss_history": train_loss,
             "train_duration_seconds": train_duration,
         }
-        self._train_run_registry.save_train_run(
+        self.train_run_registry.save_train_run(
             model_id=self.model_id,
             train_config=train_config,
             metrics=train_metrics,
         )
-
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        """Predict ratings, clipped to [0, 1]."""
-        pred = self.model.predict(X)
-        return np.clip(pred, 0.0, 1.0)
 
     def test(self):
         """
@@ -393,7 +377,7 @@ class ANFIS:
         print(f"MSE: {mse:.8f} for time interval {self.time_interval}")
         print(f"RMSE: {np.sqrt(mse):.8f} for time interval {self.time_interval}")
 
-        # Select up to 10 samples per distinct Y_val for stratified plot
+        # plot predictions vs true ratings
         rng = np.random.default_rng(42 + self.time_interval)
         unique_y = np.unique(self.Y_val)
         idx_list = []
@@ -423,15 +407,14 @@ class ANFIS:
         )
         plt.close(fig)
 
+        # save test run metrics
         metrics = {
             "r2": r2,
             "mse": mse,
             "rmse": float(np.sqrt(mse)),
         }
-
-        self._test_run_registry.save_test_run(
+        self.test_run_registry.save_test_run(
             model_id=self.model_id,
             metrics=metrics,
         )
-
         return metrics

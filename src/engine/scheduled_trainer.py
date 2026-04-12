@@ -40,7 +40,7 @@ class ScheduledHybridTrainer(HybridTrainer):
 
     def _get_lr(self, epoch: int, total_epochs: int) -> float:
         if self.schedule == "exponential":
-            return max(self.initial_lr * (self.decay_rate ** epoch), self.min_lr)
+            return max(self.initial_lr * (self.decay_rate**epoch), self.min_lr)
         if self.schedule == "cosine":
             cos_decay = 0.5 * (1 + math.cos(math.pi * epoch / total_epochs))
             return self.min_lr + (self.initial_lr - self.min_lr) * cos_decay
@@ -58,7 +58,9 @@ class ScheduledHybridTrainer(HybridTrainer):
             raise ValueError("validation_frequency must be >= 1")
 
         X_train, y_train = self._prepare_training_data(model, X, y)
-        state = self.init_state(model, X_train, y_train)  # pylint: disable=assignment-from-none
+        state = self.init_state(
+            model, X_train, y_train
+        )  # pylint: disable=assignment-from-none
 
         prepared_val = None
         if validation_data is not None:
@@ -101,7 +103,11 @@ class ScheduledHybridTrainer(HybridTrainer):
                     val_loss = float(self.compute_loss(model, X_val, y_val))
                 val_history.append(val_loss)
 
-            self._log_epoch(epoch_idx, epoch_loss, val_loss, verbose)
+            if verbose:
+                msg = f"Epoch {epoch_idx + 1}/{epochs} — loss: {epoch_loss:.6f}, lr: {self.learning_rate:.6f}"
+                if val_loss is not None:
+                    msg += f", val_loss: {val_loss:.6f}"
+                print(msg)
 
         result: dict = {"train": train_history}
         if prepared_val is not None:

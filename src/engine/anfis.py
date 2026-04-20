@@ -11,7 +11,6 @@ from sklearn.model_selection import train_test_split
 from ..database.model_registry import ModelRegistry
 from ..database.test_run_registry import TestRunRegistry
 from ..database.train_run_registry import TrainRunRegistry
-from .scheduled_trainer import ScheduledHybridTrainer
 
 
 class ANFIS:
@@ -22,15 +21,12 @@ class ANFIS:
         num_epochs: int,
         learning_rate: float,
         membership_functions: str,
-        optimizer: str,
         time_interval: int,
         loss_function: str,
         batch_size: int,
         index4_mode: str = None,
-        lr_schedule: str | None = None,
-        min_lr: float = 1e-5,
-        decay_rate: float = 0.9,
         num_experts: int | None = None,
+        n_mfs: int = 3,
     ):
         assert num_indices in [3, 4], "Number of indices must be 3 or 4"
         assert isinstance(time_interval, int) and time_interval in range(
@@ -40,24 +36,16 @@ class ANFIS:
         self.num_epochs = num_epochs
         self.learning_rate = learning_rate
         self.membership_functions = membership_functions
-        self.optimizer = optimizer
         self.time_interval = time_interval
-        self.lr_schedule = lr_schedule
-        assert self.lr_schedule is not None, "lr_schedule must be provided"
-        trainer = ScheduledHybridTrainer(
+        self.model = ANFISRegressor(
+            n_mfs=n_mfs,
+            mf_type=membership_functions,
+            optimizer="hybrid",
+            loss=loss_function,
             learning_rate=learning_rate,
             epochs=num_epochs,
-            schedule=lr_schedule,
-            min_lr=min_lr,
-            decay_rate=decay_rate,
-            verbose=True,
-        )
-        self.model = ANFISRegressor(
-            n_mfs=3,
-            mf_type=membership_functions,
-            optimizer=trainer,
-            loss=loss_function,
             batch_size=batch_size,
+            verbose=True,
         )
         self.base_dir = Path(__file__).parents[2]
         self.data_path = self.base_dir / "data" / "output"
@@ -93,14 +81,10 @@ class ANFIS:
             "num_epochs": num_epochs,
             "learning_rate": learning_rate,
             "membership_functions": membership_functions,
-            "optimizer": optimizer,
             "time_interval": time_interval,
             "loss_function": loss_function,
             "batch_size": batch_size,
             "index4_mode": index4_mode,
-            "lr_schedule": lr_schedule,
-            "min_lr": min_lr,
-            "decay_rate": decay_rate,
         }
         model_path = str(
             self.models_dir / f"anfis_model_time_interval_{time_interval}.pkl"
@@ -364,6 +348,9 @@ class ANFIS:
             metrics=train_metrics,
         )
 
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return self.model.predict(X)
+
     def test(self):
         """
         Evaluate the model on the test set.
@@ -371,7 +358,7 @@ class ANFIS:
         metrics = {}
 
         # evaluate metrics
-        Y_pred = self.model.predict(self.X_val)
+        Y_pred = self.predict(self.X_val)
         mse = mean_squared_error(self.Y_val, Y_pred)
         r2 = r2_score(self.Y_val, Y_pred)
 

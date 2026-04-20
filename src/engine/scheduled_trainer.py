@@ -10,7 +10,7 @@ class ScheduledHybridTrainer(HybridTrainer):
     Supported schedules:
     - ``"exponential"``: multiply by *decay_rate* each epoch (ANFIS standard)
     - ``"cosine"``:      smooth cosine annealing from *initial_lr* to *min_lr*
-    - ``"step"``:        halves every ⅓ of total epochs
+    - ``"step"``:        halves every 1/3 of total epochs
     - ``"linear"``:      linear decay from *initial_lr* to *min_lr*
     """
 
@@ -24,6 +24,8 @@ class ScheduledHybridTrainer(HybridTrainer):
         schedule: str = "exponential",
         min_lr: float = 1e-5,
         decay_rate: float = 0.9,
+        batch_size: int | None = 256,
+        batch_print_frequency: int = 1000,
         **kwargs,
     ):
         super().__init__(
@@ -37,6 +39,8 @@ class ScheduledHybridTrainer(HybridTrainer):
         self.min_lr = min_lr
         self.schedule = schedule
         self.decay_rate = decay_rate
+        self.batch_size = batch_size
+        self.batch_print_frequency = batch_print_frequency
 
     def _get_lr(self, epoch: int, total_epochs: int) -> float:
         if self.schedule == "exponential":
@@ -92,6 +96,10 @@ class ScheduledHybridTrainer(HybridTrainer):
                         model, X_train[batch_idx], y_train[batch_idx], state
                     )
                     epoch_losses.append(float(loss))
+                    if start % self.batch_print_frequency == 0 and start != 0:
+                        print(
+                            f"\tBatch: {start} / {n_samples}, curr mean loss: {np.mean(epoch_losses):.6f}"
+                        )
 
             epoch_loss = float(np.mean(epoch_losses)) if epoch_losses else 0.0
             train_history.append(epoch_loss)

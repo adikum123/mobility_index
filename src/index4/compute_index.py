@@ -43,7 +43,7 @@ def compute_and_save_index4(azimuth_offset_km: float = 0.0):
                 filepath = BASE_PATH / filename
                 subgroup_amenities = pd.read_csv(filepath).to_dict(orient="records")
 
-                station_point = station.adjusted_coordinates(azimuth_offset_km)
+                station_point = station.adjusted_coordinates()
                 relevant_amenities = [
                     x
                     for x in subgroup_amenities

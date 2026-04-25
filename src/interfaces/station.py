@@ -14,15 +14,15 @@ class Station:
 
     _EARTH_RADIUS_KM: float = field(default=6371.0, init=False, repr=False)
 
-    def adjusted_coordinates(self, offset_km: float) -> tuple[float, float]:
+    def adjusted_coordinates(self) -> tuple[float, float]:
         """Shift position along azimuth bearing by *offset_km*.
 
         For OMNI (360) or unknown azimuth, the original position is returned
         because there is no preferred direction.
         """
-        if self.azimuth is None or self.azimuth == 360 or offset_km <= 0:
+        if self.azimuth is None or self.azimuth == 360:
             return self.latitude, self.longitude
-
+        offset_km = 0.5  # 500 m
         bearing_rad = math.radians(self.azimuth)
         lat_rad = math.radians(self.latitude)
         lon_rad = math.radians(self.longitude)

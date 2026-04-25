@@ -111,6 +111,9 @@ class DataProcessor:
                 if journey is not None:
                     journeys.append(journey)
 
+        # all candidate transitions (before remove_journey); use for analysis / thresholds
+        self.journeys_all = journeys
+
         # filter journeys
         filter_statistics = defaultdict(int)
         filtered_journeys = [

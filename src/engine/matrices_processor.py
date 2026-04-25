@@ -113,8 +113,7 @@ class MatricesProcessor:
         """
         n = len(self.data_processor.switch_ids)
         coords = {
-            s.switch_id: s.adjusted_coordinates(azimuth_offset_km)
-            for s in self.data_processor.stations
+            s.switch_id: s.adjusted_coordinates() for s in self.data_processor.stations
         }
 
         matrix = np.zeros((n, n))

@@ -38,7 +38,6 @@ class ANFIS:
         num_val_experts: int,
         num_test_experts: int,
         optimizer: str = "hybrid",
-        optimizer_params: dict | None = None,
         shuffle: bool = True,
         index4_mode: str = None,
         n_mfs: int = 3,
@@ -64,7 +63,6 @@ class ANFIS:
         self.membership_functions = membership_functions
         self.time_interval = time_interval
         self.optimizer = optimizer
-        self.optimizer_params = optimizer_params
         self.shuffle = shuffle
         self.model = ANFISRegressor(
             n_mfs=n_mfs,
@@ -149,7 +147,7 @@ class ANFIS:
                 Path(__file__).parents[2]
                 / "data"
                 / "mappers"
-                / "anketa_3_indikatora.xlsx"
+                / "anketa_3_indikatora_new.xlsx"
             )
             key_cols = (
                 "journey_count_category",

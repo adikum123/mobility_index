@@ -2,14 +2,11 @@
 
 from pathlib import Path
 
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 from geopy.distance import geodesic
 
 from src.engine.data_processor import DataProcessor
-
-matplotlib.use("Agg")
+from src.engine.plotter import plot_journey_inter_station_distances
 
 ROOT = Path(__file__).resolve().parent.parent
 PLOTS = ROOT / "plots"
@@ -41,42 +38,8 @@ def main() -> None:
     for p in (5, 10, 25, 50, 75, 90, 95, 99):
         print(f"  p{p}:        {float(np.percentile(d, p)):.4f}")
 
-    PLOTS.mkdir(parents=True, exist_ok=True)
-    bin_km = 0.5  # 500 m per bin
-    d_max = float(d.max())
-    right = np.ceil(d_max / bin_km) * bin_km + bin_km
-    hist_edges = np.arange(0.0, right + 1e-9, bin_km)
-
-    fig, axes = plt.subplots(2, 1, figsize=(9, 7), layout="tight")
-    axes[0].hist(
-        d,
-        bins=hist_edges,
-        color="steelblue",
-        edgecolor="white",
-        alpha=0.9,
-        linewidth=0.3,
-    )
-    axes[0].set_xlabel(
-        "Geodesic distance origin → destination station (km) (500 m bins)"
-    )
-    axes[0].set_ylabel("Journey count")
-    axes[0].set_title(
-        f"Journey inter-station distances (n={n}, bin width = {int(bin_km * 1000)} m)"
-    )
-    axes[0].grid(True, alpha=0.3)
-
-    s = np.sort(d)
-    axes[1].plot(
-        s, (np.arange(1, n + 1) - 0.5) / n, color="darkgreen", drawstyle="steps-post"
-    )
-    axes[1].set_xlabel("Distance (km)")
-    axes[1].set_ylabel("ECDF")
-    axes[1].set_ylim(0, 1)
-    axes[1].grid(True, alpha=0.3)
-
     out = PLOTS / "journey_inter_station_distances_km.png"
-    fig.savefig(out, dpi=150)
-    plt.close(fig)
+    plot_journey_inter_station_distances(d, out, bin_km=0.5)
     print(f"\nSaved {out}")
 
 

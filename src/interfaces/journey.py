@@ -47,7 +47,7 @@ class Journey:
         if self.datetime_diff_seconds < 60 * 10 or self.datetime_diff_seconds > 60 * 60:
             filter_statistics["time"] += 1
             return True
-        if self.vincents_distance < 1.0:
+        if self.vincents_distance < 0.5:
             filter_statistics["distance"] += 1
             return True
         if self.average_speed > 100:

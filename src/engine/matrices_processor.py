@@ -3,7 +3,6 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from geopy.distance import geodesic
 
 from ..interfaces import Journey
@@ -11,43 +10,57 @@ from .data_processor import DataProcessor
 
 OUTPUT_BASE = Path(__file__).parents[2] / "data" / "output"
 
+DISTANCE_MATRIX_FILENAME = "distance_matrix.npz"
+
+
+def interval_time_matrix_filename(interval: int) -> str:
+    return f"interval_{interval}_time_matrix.npz"
+
+
+def interval_journey_counts_matrix_filename(interval: int) -> str:
+    return f"interval_{interval}_journey_counts_matrix.npz"
+
 
 class MatricesProcessor:
     def __init__(self) -> None:
         self.data_processor = DataProcessor()
 
-    def save_matrix(
-        self,
-        matrix: np.ndarray,
-        filename: str,
-        sheet_name: str,
-        output_subdir: str,
-    ) -> None:
-        """Normalize a single matrix on its own min/max, then save."""
-        matrix = MatricesProcessor.normalize_matrix(matrix)
-        self._save_matrix_to_excel(matrix, filename, sheet_name, output_subdir)
+    @staticmethod
+    def load_matrix_npz(path: Path) -> tuple[np.ndarray, np.ndarray]:
+        """Load a square matrix and its switch_id axis order from ``.npz``."""
+        with np.load(path) as data:
+            values = np.asarray(data["values"], dtype=np.float64)
+            switch_ids = np.asarray(data["switch_ids"], dtype=np.int64)
+        if values.ndim != 2 or values.shape[0] != values.shape[1]:
+            raise ValueError(
+                f"Expected square matrix at {path}, got shape {values.shape}"
+            )
+        if values.shape[0] != len(switch_ids):
+            raise ValueError(
+                f"values shape {values.shape} does not match len(switch_ids)={len(switch_ids)}"
+            )
+        return values, switch_ids
 
-    def _save_matrix_to_excel(
+    def _save_matrix_to_npz(
         self,
         matrix: np.ndarray,
         filename: str,
-        sheet_name: str,
         output_subdir: str,
     ) -> None:
         save_dir = OUTPUT_BASE / output_subdir
         os.makedirs(save_dir, exist_ok=True)
-
-        df = pd.DataFrame(
-            matrix,
-            index=self.data_processor.switch_ids,
-            columns=self.data_processor.switch_ids,
-        )
-        df.index.name = ""
         filepath = save_dir / filename
-        engine = "openpyxl" if str(filepath).endswith(".xlsx") else "xlsxwriter"
-        with pd.ExcelWriter(filepath, engine=engine) as writer:
-            df.to_excel(writer, sheet_name=sheet_name)
-        print(f"Saved {sheet_name.lower()} to {filepath}")
+        switch_ids = np.asarray(self.data_processor.switch_ids, dtype=np.int64)
+        if matrix.shape != (len(switch_ids), len(switch_ids)):
+            raise ValueError(
+                f"matrix shape {matrix.shape} does not match n={len(switch_ids)}"
+            )
+        np.savez_compressed(
+            filepath,
+            values=np.asarray(matrix, dtype=np.float64),
+            switch_ids=switch_ids,
+        )
+        print(f"Saved matrix to {filepath}")
 
     def compute_single_time_matrix_from_journeys(
         self, journeys: list[Journey]
@@ -81,10 +94,9 @@ class MatricesProcessor:
         global_min, global_max = self._global_min_max(matrices)
         for interval, matrix in enumerate(matrices):
             matrix = MatricesProcessor.normalize_matrix(matrix, global_min, global_max)
-            self._save_matrix_to_excel(
+            self._save_matrix_to_npz(
                 matrix=matrix,
-                filename=f"interval_{interval}_time_matrix.xlsx",
-                sheet_name="IntervalMatrix",
+                filename=interval_time_matrix_filename(interval),
                 output_subdir="time_matrices",
             )
 
@@ -112,10 +124,11 @@ class MatricesProcessor:
                     continue
                 matrix[i][j] = geodesic(coords[sid_i], coords[sid_j]).kilometers
 
-        self.save_matrix(
+        matrix = MatricesProcessor.normalize_matrix(matrix)
+
+        self._save_matrix_to_npz(
             matrix=matrix,
-            filename="distance_matrix.xlsx",
-            sheet_name="DistanceMatrix",
+            filename=DISTANCE_MATRIX_FILENAME,
             output_subdir="distance_matrices",
         )
 
@@ -150,10 +163,9 @@ class MatricesProcessor:
         global_min, global_max = self._global_min_max(matrices)
         for interval, matrix in enumerate(matrices):
             matrix = MatricesProcessor.normalize_matrix(matrix, global_min, global_max)
-            self._save_matrix_to_excel(
+            self._save_matrix_to_npz(
                 matrix=matrix,
-                filename=f"interval_{interval}_journey_counts_matrix.xlsx",
-                sheet_name="JourneyCounts",
+                filename=interval_journey_counts_matrix_filename(interval),
                 output_subdir="journey_counts_matrices",
             )
 

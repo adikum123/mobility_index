@@ -63,14 +63,15 @@ def compute_and_save_index4(azimuth_offset_km: float = 0.0):
     if max_val != min_val:
         scores = (scores - min_val) / (max_val - min_val)
 
-    # save as single-column xlsx
     save_dir = OUTPUT_BASE / "index4"
     os.makedirs(save_dir, exist_ok=True)
-    filepath = save_dir / "index4_array.xlsx"
-    df = pd.DataFrame({"score": scores}, index=data_processor.switch_ids)
-    df.index.name = "switch_id"
-    with pd.ExcelWriter(filepath, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name="Index4")
+    filepath = save_dir / "index4_array.npz"
+    switch_ids = np.asarray(data_processor.switch_ids, dtype=np.int64)
+    np.savez_compressed(
+        filepath,
+        scores=np.asarray(scores, dtype=np.float64),
+        switch_ids=switch_ids,
+    )
     print(f"Saved index4 array to {filepath}")
 
 

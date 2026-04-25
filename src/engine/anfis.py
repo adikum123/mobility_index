@@ -1,3 +1,4 @@
+import logging
 import time
 from pathlib import Path
 
@@ -5,12 +6,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from anfis_toolbox import ANFISRegressor
+from anfis_toolbox.logging_config import enable_training_logs
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 from ..database.model_registry import ModelRegistry
 from ..database.test_run_registry import TestRunRegistry
 from ..database.train_run_registry import TrainRunRegistry
+from ..engine.matrices_processor import (
+    DISTANCE_MATRIX_FILENAME,
+    MatricesProcessor,
+    interval_journey_counts_matrix_filename,
+    interval_time_matrix_filename,
+)
+
+INDEX4_ARRAY_FILENAME = "index4_array.npz"
+
+
+def _log_training_history_table(history: dict) -> None:
+    """Print epoch train losses to stdout (always visible; does not rely on logger setup)."""
+    train = history.get("train") or []
+    print("\n--- Per-epoch training loss (train split only) ---")
+    for i, tl in enumerate(train):
+        print(f"  epoch {i + 1:>4}/{len(train)}  train_loss={tl:.8f}")
+    if train:
+        print(f"  summary: train_loss first={train[0]:.8f}  last={train[-1]:.8f}\n")
 
 
 class ANFIS:
@@ -23,7 +43,11 @@ class ANFIS:
         membership_functions: str,
         time_interval: int,
         loss_function: str,
-        batch_size: int,
+        batch_size: int | None = 256,
+        *,
+        optimizer: str = "hybrid",
+        optimizer_params: dict | None = None,
+        shuffle: bool = True,
         index4_mode: str = None,
         num_experts: int | None = None,
         n_mfs: int = 3,
@@ -37,14 +61,18 @@ class ANFIS:
         self.learning_rate = learning_rate
         self.membership_functions = membership_functions
         self.time_interval = time_interval
+        self.optimizer = optimizer
+        self.optimizer_params = optimizer_params
+        self.shuffle = shuffle
         self.model = ANFISRegressor(
             n_mfs=n_mfs,
             mf_type=membership_functions,
-            optimizer="hybrid",
+            optimizer=optimizer,
             loss=loss_function,
             learning_rate=learning_rate,
-            epochs=num_epochs,
             batch_size=batch_size,
+            shuffle=shuffle,
+            epochs=num_epochs,
             verbose=True,
         )
         self.base_dir = Path(__file__).parents[2]
@@ -84,6 +112,9 @@ class ANFIS:
             "time_interval": time_interval,
             "loss_function": loss_function,
             "batch_size": batch_size,
+            "optimizer": optimizer,
+            "optimizer_params": optimizer_params,
+            "shuffle": shuffle,
             "index4_mode": index4_mode,
         }
         model_path = str(
@@ -122,30 +153,33 @@ class ANFIS:
         raise ValueError(f"Unknown index4_mode: {self.index4_mode!r}")
 
     def _get_X(self) -> np.ndarray:
-        # load distance matrix
         distance_matrix_path = (
-            self.data_path / "distance_matrices" / "distance_matrix.xlsx"
+            self.data_path / "distance_matrices" / DISTANCE_MATRIX_FILENAME
         )
-        df = pd.read_excel(distance_matrix_path, index_col=0)
-        distance_matrix_flat = df.to_numpy().flatten()
+        dm, ref_switch_ids = MatricesProcessor.load_matrix_npz(distance_matrix_path)
+        distance_matrix_flat = dm.flatten()
 
-        # load journey count matrix
         journey_count_matrix_path = (
             self.data_path
             / "journey_counts_matrices"
-            / f"interval_{self.time_interval}_journey_counts_matrix.xlsx"
+            / interval_journey_counts_matrix_filename(self.time_interval)
         )
-        df = pd.read_excel(journey_count_matrix_path, index_col=0)
-        journey_count_matrix_flat = df.to_numpy().flatten()
+        jm, j_sids = MatricesProcessor.load_matrix_npz(journey_count_matrix_path)
+        if not np.array_equal(ref_switch_ids, j_sids):
+            raise ValueError(
+                "switch_ids in journey count matrix do not match distance matrix"
+            )
+        journey_count_matrix_flat = jm.flatten()
 
-        # load time matrix
         time_matrix_path = (
             self.data_path
             / "time_matrices"
-            / f"interval_{self.time_interval}_time_matrix.xlsx"
+            / interval_time_matrix_filename(self.time_interval)
         )
-        df = pd.read_excel(time_matrix_path, index_col=0)
-        time_matrix_flat = df.to_numpy().flatten()
+        tm, t_sids = MatricesProcessor.load_matrix_npz(time_matrix_path)
+        if not np.array_equal(ref_switch_ids, t_sids):
+            raise ValueError("switch_ids in time matrix do not match distance matrix")
+        time_matrix_flat = tm.flatten()
 
         if self.num_indices == 3:
             # stack flattened matrices as columns
@@ -159,10 +193,12 @@ class ANFIS:
             ).astype(float)
             return X
 
-        # load index4 per-station array and expand to n×n matrix
-        index4_array_path = self.data_path / "index4" / "index4_array.xlsx"
-        df = pd.read_excel(index4_array_path, index_col=0)
-        index4_values = df["score"].to_numpy()
+        index4_array_path = self.data_path / "index4" / INDEX4_ARRAY_FILENAME
+        with np.load(index4_array_path) as idx4:
+            index4_sids = np.asarray(idx4["switch_ids"], dtype=np.int64)
+            index4_values = np.asarray(idx4["scores"], dtype=np.float64)
+        if not np.array_equal(ref_switch_ids, index4_sids):
+            raise ValueError("switch_ids in index4 array do not match distance matrix")
         index4_matrix = self._expand_index4(index4_values).flatten()
 
         # stack flattened matrices as columns
@@ -268,8 +304,8 @@ class ANFIS:
         self.Y = np.concatenate([self._get_Y(X_base, lookup) for lookup in lookups])
 
     def set_train_val_data(self, random_state: int = 42):
-        """
-        Returns a train-validation split using 80% for training, 20% for testing.
+        """Split 80% train / 20% held-out. Only the train split is used in ``fit``;
+        the held-out split is for metrics in ``test()`` and is not used during training.
         """
         X_train, X_val, Y_train, Y_val = train_test_split(
             self.X, self.Y, test_size=0.2, random_state=random_state
@@ -294,7 +330,24 @@ class ANFIS:
             f"Training samples: {len(self.X_train)}, Validation samples: {len(self.X_val)}"
         )
 
-        # training
+        yt, yv = self.Y_train, self.Y_val
+        print(
+            "\n--- Target (Y) stats ---\n"
+            f"  train (used for fit): min={yt.min():.6f} max={yt.max():.6f} "
+            f"mean={yt.mean():.6f} std={yt.std():.6f}\n"
+            f"  held-out (for evaluation in test() only): min={yv.min():.6f} max={yv.max():.6f} "
+            f"mean={yv.mean():.6f} std={yv.std():.6f}\n"
+        )
+
+        # So toolbox + hybrid trainer INFO lines appear (nested loggers propagate to root)
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(message)s",
+            force=True,
+        )
+        enable_training_logs()
+
+        # Train on train split only; held-out data is not passed to fit (see test()).
         print("Starting ANFIS training...")
         self.model.fit(self.X_train, self.Y_train, verbose=True)
         print("Training completed successfully")
@@ -304,6 +357,9 @@ class ANFIS:
             f"Training time: {end_time - start_time} seconds for {self.num_epochs} epochs"
         )
 
+        history = self.model.training_history_
+        _log_training_history_table(history)
+
         # save model file
         self.model_registry.save_model_file(
             model=self.model,
@@ -311,11 +367,14 @@ class ANFIS:
         )
 
         # extract plots from the training history
-        history = self.model.training_history_
         train_loss = history["train"]
         print("Plotting training progress...")
         fig, ax = plt.subplots(figsize=(8, 5))
-        ax.plot(train_loss, label="Training Loss")
+        ax.plot(
+            range(1, len(train_loss) + 1),
+            train_loss,
+            label="Training loss (train split)",
+        )
         ax.set_title(
             f"ANFIS Training Loss Over Epochs (time interval {self.time_interval})"
         )
@@ -352,9 +411,7 @@ class ANFIS:
         return self.model.predict(X)
 
     def test(self):
-        """
-        Evaluate the model on the test set.
-        """
+        """Evaluate on the held-out split (not used during ``fit``)."""
         metrics = {}
 
         # evaluate metrics

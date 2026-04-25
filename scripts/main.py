@@ -1,15 +1,24 @@
 from src.engine import ANFIS
+from src.engine.matrices_processor import MatricesProcessor
+
+matrices_processor = MatricesProcessor()
+
+matrices_processor.compute_distance_matrix()
+matrices_processor.compute_time_matrices()
+matrices_processor.compute_journey_count_matrices()
 
 model = ANFIS(
     num_indices=3,
     num_epochs=5,
-    learning_rate=0.1,
+    learning_rate=0.01,
     membership_functions="gaussian",
     time_interval=3,
     loss_function="mse",
-    index4_mode="destination",
     batch_size=256,
-    num_experts=2,
+    optimizer="adam",
+    shuffle=True,
+    index4_mode="destination",
+    num_experts=3,
     n_mfs=3,
 )
 model.train()

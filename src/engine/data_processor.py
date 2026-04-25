@@ -138,9 +138,9 @@ class DataProcessor:
                         altitude=item.altitude,
                     )
                 )
-
-        # return sorted switch ids so that order is always the same
-        return stations, sorted(switch_ids)
+        sorted_switch_ids = sorted(switch_ids)
+        sorted_stations = sorted(stations, key=lambda s: s.switch_id)
+        return sorted_stations, sorted_switch_ids
 
     def get_station_by_switch_id(self, switch_id: int) -> Station | None:
         for station in self.stations:

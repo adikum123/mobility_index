@@ -1,5 +1,3 @@
-import uuid
-
 from .database import TestRun, init_database
 
 
@@ -10,11 +8,12 @@ class TestRunRegistry:
 
     def save_test_run(
         self,
+        run_id: str,
         model_id: str,
         metrics: dict,
-    ):
+    ) -> None:
         TestRun.insert(  # pylint: disable=no-value-for-parameter
-            test_run_id=uuid.uuid4().hex,
+            run_id=run_id,
             model_id=model_id,
             metrics=metrics,
         ).execute()

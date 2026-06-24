@@ -1,20 +1,20 @@
+import json
+
 from src.engine import ANFIS
 
-model = ANFIS(
-    num_indices=3,
-    num_epochs=5,
-    learning_rate=0.001,
-    membership_functions="triangular",
-    time_interval=3,
-    loss_function="mse",
-    batch_size=256,
-    optimizer="adam",
-    shuffle=True,
-    n_mfs=3,
-    num_train_experts=3,
-    num_val_experts=2,
-    num_test_experts=2,
-)
-model.train()
-metrics = model.test()
-print(metrics)
+ANFIS_ARGS = {
+    "num_epochs": 100,
+    "learning_rate": 0.01,
+    "membership_functions": "triangular",
+    "loss_function": "mse",
+    "batch_size": 256,
+    "optimizer": "adam",
+    "shuffle": True,
+    "n_mfs": 3,
+}
+
+for num_indices in (3, 4):
+    model = ANFIS(**ANFIS_ARGS, num_indices=num_indices)
+    model.train()
+    metrics = model.test()
+    print(f"num_indices={num_indices}:\n{json.dumps(metrics, indent=4)}")

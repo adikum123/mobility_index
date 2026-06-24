@@ -13,10 +13,12 @@ class TrainRunRegistry:
         model_id: str,
         train_config: dict,
         metrics: dict,
-    ):
+    ) -> str:
+        run_id = uuid.uuid4().hex
         TrainRun.insert(  # pylint: disable=no-value-for-parameter
-            train_run_id=uuid.uuid4().hex,
+            run_id=run_id,
             model_id=model_id,
             train_config=train_config,
             metrics=metrics,
         ).execute()
+        return run_id

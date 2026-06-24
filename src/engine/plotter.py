@@ -15,11 +15,11 @@ def plot_anfis_training_loss(
     train_loss: list[float],
     val_losses: list | None,
     *,
-    time_interval: int,
+    title: str,
     output_path: str | Path,
     val_legend_label: str = "Val loss",
 ) -> None:
-    """Save train (and optional val) loss vs epoch for one time interval."""
+    """Save train (and optional val) loss vs epoch."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -40,7 +40,7 @@ def plot_anfis_training_loss(
             list(val_losses),
             label=val_legend_label,
         )
-    ax.set_title(f"ANFIS loss (time interval {time_interval})")
+    ax.set_title(title)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss (MSE)")
     ax.legend()

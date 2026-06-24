@@ -9,7 +9,6 @@ from pathlib import Path
 
 from peewee import (
     CharField,
-    CompositeKey,
     DateTimeField,
     ForeignKeyField,
     Model,
@@ -68,7 +67,7 @@ class ANFISModel(BaseModel):
 
 
 class TrainRun(BaseModel):
-    train_run_id = CharField()
+    run_id = CharField(primary_key=True)
     model_id = ForeignKeyField(ANFISModel, on_delete="CASCADE")
     train_config = JSONField()
     metrics = JSONField()
@@ -76,18 +75,16 @@ class TrainRun(BaseModel):
 
     class Meta:
         table_name = "train_run"
-        primary_key = CompositeKey("train_run_id", "model_id")
 
 
 class TestRun(BaseModel):
-    test_run_id = CharField()
+    run_id = ForeignKeyField(TrainRun, backref="test_run", on_delete="CASCADE", primary_key=True)
     model_id = ForeignKeyField(ANFISModel, on_delete="CASCADE")
     metrics = JSONField()
     updated_at = DateTimeField(default=datetime.now)
 
     class Meta:
         table_name = "test_run"
-        primary_key = CompositeKey("model_id", "test_run_id")
 
 
 ALL_MODELS = [ANFISModel, TrainRun, TestRun]

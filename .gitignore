@@ -13,6 +13,7 @@ data/
 docs/
 plots/
 models/
+logs/
 
 # IDE files
 .vscode/

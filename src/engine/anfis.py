@@ -1,5 +1,6 @@
 import logging
 import time
+import random
 import uuid
 from pathlib import Path
 
@@ -24,13 +25,16 @@ class ANFIS:
         learning_rate: float,
         membership_functions: str,
         loss_function: str,
+        sheet_dir: str,
         batch_size: int | None = 256,
+        overlap: float = 0.1,
+        margin: float = 0.5, 
         *,
         optimizer: str = "hybrid",
         shuffle: bool = True,
         n_mfs: int = 3,
     ):
-        _init_params = {k: v for k, v in locals().items() if k != "self"}
+        _init_params = {k: v for k, v in list(locals().items()) if k != "self"}
         assert num_indices in (3, 4), "Number of indices must be 3 or 4"
         self.num_indices = num_indices
         self.num_epochs = num_epochs
@@ -49,6 +53,9 @@ class ANFIS:
             shuffle=shuffle,
             epochs=num_epochs,
             verbose=True,
+            overlap=overlap,
+            margin=margin,
+            random_state=random.randint(0, 100)
         )
         project_root = Path(__file__).parents[2]
         self.plots_path = project_root / "plots"
@@ -75,22 +82,23 @@ class ANFIS:
             path=str(self.model_path),
             config=self.config,
         )
+        self.sheet_dir = sheet_dir
 
     # Text labels used in the survey Excel for each indicator column.
     # Each label maps to a normalised [0, 1] value: low=0.0, mid=0.5, high=1.0.
     # Rating (Ocjena) is an integer 1–6 and is normalised separately as (r-1)/(max-1).
     _INDICATOR_CODES: dict[str, float] = {
-        "Mali": 0.0,
-        "Srednji": 0.5,
+        "Mali": 1 / 3,
+        "Srednji": 2 / 3,
         "Veliki": 1.0,
-        "Kratko": 0.0,
-        "Srednje": 0.5,
+        "Kratko": 1 / 3,
+        "Srednje": 2 / 3,
         "Dugo": 1.0,
-        "Kratka": 0.0,
-        "Srednja": 0.5,
+        "Kratka": 1 / 3,
+        "Srednja": 2 / 3,
         "Velika": 1.0,
-        "Niska": 0.0,
-        "Umjerena": 0.5,
+        "Niska": 1 / 3,
+        "Umjerena": 2 / 3,
         "Visoka": 1.0,
     }
 
@@ -100,7 +108,7 @@ class ANFIS:
             if self.num_indices == 3
             else "anketa_4_indikatora.xlsx"
         )
-        return Path(__file__).parents[2] / "data" / "mappers" / filename
+        return Path(__file__).parents[2] / "data" / "mappers" / self.sheet_dir / filename
 
     def _load_survey_pairs(
         self, sheet_names: list[str]
@@ -136,7 +144,7 @@ class ANFIS:
                 x_row = [
                     self._INDICATOR_CODES[str(row[col]).strip()] for col in input_cols
                 ]
-                y_val = (float(row["rating"]) - 1) / (self.rating_max - 1)
+                y_val = float(row["rating"]) / 6
                 rows_X.append(x_row)
                 rows_Y.append(y_val)
 

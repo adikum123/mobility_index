@@ -104,9 +104,9 @@ class ANFIS:
 
     def _survey_path(self) -> Path:
         filename = (
-            "anketa_3_indikatora.xlsx"
+            "anketa_3_indikatora_27_kombinacija.xlsx"
             if self.num_indices == 3
-            else "anketa_4_indikatora.xlsx"
+            else "anketa_4_indikatora_81_kombinacija.xlsx"
         )
         return Path(__file__).parents[2] / "data" / "mappers" / self.sheet_dir / filename
 
@@ -154,9 +154,10 @@ class ANFIS:
         """Split survey sheets into train / val / test (70% / 15% / 15%)."""
         all_sheets: dict = pd.read_excel(self._survey_path(), sheet_name=None)
         sheet_names = list(all_sheets.keys())
+        random.shuffle(sheet_names)
         n = len(sheet_names)
-        i_train = int(0.7 * n)
-        i_val = i_train + int(0.15 * n)
+        i_train = int(0.6 * n)
+        i_val = i_train + int(0.2 * n)
         tr_names = sheet_names[:i_train]
         va_names = sheet_names[i_train:i_val]
         te_names = sheet_names[i_val:]

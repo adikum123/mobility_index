@@ -27,8 +27,8 @@ class ANFIS:
         loss_function: str,
         sheet_dir: str,
         batch_size: int | None = 256,
-        overlap: float = 0.1,
-        margin: float = 0.5, 
+        overlap: float = 0.5,
+        margin: float = 0.1, 
         *,
         optimizer: str = "hybrid",
         shuffle: bool = True,
@@ -88,17 +88,17 @@ class ANFIS:
     # Each label maps to a normalised [0, 1] value: low=0.0, mid=0.5, high=1.0.
     # Rating (Ocjena) is an integer 1–6 and is normalised separately as (r-1)/(max-1).
     _INDICATOR_CODES: dict[str, float] = {
-        "Mali": 1 / 3,
-        "Srednji": 2 / 3,
+        "Mali": 0.0,
+        "Srednji": 0.5,
         "Veliki": 1.0,
-        "Kratko": 1 / 3,
-        "Srednje": 2 / 3,
+        "Kratko": 0.0,
+        "Srednje": 0.5,
         "Dugo": 1.0,
-        "Kratka": 1 / 3,
-        "Srednja": 2 / 3,
+        "Kratka": 0.0,
+        "Srednja": 0.5,
         "Velika": 1.0,
-        "Niska": 1 / 3,
-        "Umjerena": 2 / 3,
+        "Niska": 0.0,
+        "Umjerena": 0.5,
         "Visoka": 1.0,
     }
 
@@ -144,7 +144,7 @@ class ANFIS:
                 x_row = [
                     self._INDICATOR_CODES[str(row[col]).strip()] for col in input_cols
                 ]
-                y_val = float(row["rating"]) / 6
+                y_val = (float(row["rating"]) - 1) / (self.rating_max - 1)
                 rows_X.append(x_row)
                 rows_Y.append(y_val)
 
@@ -154,10 +154,9 @@ class ANFIS:
         """Split survey sheets into train / val / test (70% / 15% / 15%)."""
         all_sheets: dict = pd.read_excel(self._survey_path(), sheet_name=None)
         sheet_names = list(all_sheets.keys())
-        random.shuffle(sheet_names)
         n = len(sheet_names)
-        i_train = int(0.6 * n)
-        i_val = i_train + int(0.2 * n)
+        i_train = int(0.7 * n)
+        i_val = i_train + int(0.15 * n)
         tr_names = sheet_names[:i_train]
         va_names = sheet_names[i_train:i_val]
         te_names = sheet_names[i_val:]

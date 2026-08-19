@@ -1,0 +1,72 @@
+[
+  {
+    "num_indices": 3,
+    "membership_function": "triangular",
+    "r2": 0.5008230440865894,
+    "mse": 0.04437128497008094,
+    "rmse": 0.21064492628611053
+  },
+  {
+    "num_indices": 3,
+    "membership_function": "gaussian",
+    "r2": 0.5008230294869956,
+    "mse": 0.04437128626782261,
+    "rmse": 0.21064492936651147
+  },
+  {
+    "num_indices": 3,
+    "membership_function": "trapezoidal",
+    "r2": 0.5008230440865897,
+    "mse": 0.044371284970080915,
+    "rmse": 0.21064492628611048
+  },
+  {
+    "num_indices": 3,
+    "membership_function": "bell",
+    "r2": 0.5008230345953887,
+    "mse": 0.04437128581374323,
+    "rmse": 0.2106449282886802
+  },
+  {
+    "num_indices": 3,
+    "membership_function": "sigmoid",
+    "r2": 0.5010696769808038,
+    "mse": 0.044349362046150774,
+    "rmse": 0.21059288223050363
+  },
+  {
+    "num_indices": 4,
+    "membership_function": "triangular",
+    "r2": 0.538628482548489,
+    "mse": 0.03240359628740378,
+    "rmse": 0.18000998941004295
+  },
+  {
+    "num_indices": 4,
+    "membership_function": "gaussian",
+    "r2": 0.538628478984967,
+    "mse": 0.03240359653768133,
+    "rmse": 0.18000999010521979
+  },
+  {
+    "num_indices": 4,
+    "membership_function": "trapezoidal",
+    "r2": 0.538628482548489,
+    "mse": 0.03240359628740378,
+    "rmse": 0.18000998941004295
+  },
+  {
+    "num_indices": 4,
+    "membership_function": "bell",
+    "r2": 0.5386285092262331,
+    "mse": 0.03240359441374056,
+    "rmse": 0.18000998420571165
+  },
+  {
+    "num_indices": 4,
+    "membership_function": "sigmoid",
+    "r2": 0.5386954659027287,
+    "mse": 0.03239889183234608,
+    "rmse": 0.17999692173019538
+  }
+]

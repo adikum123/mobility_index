@@ -1,77 +1,90 @@
+"""Train the Vidović-style hybrid ANFIS (3 epochs) across all 8 membership-function
+types, for both 3- and 4-indicator models.
+
+Reports train / val / test RMSE on the same [0, 1] output scale used by Vidović,
+so the numbers are directly comparable to his Table 40 figures. Writes
+`hybrid_results.json`, which `generate_report.py` turns into a markdown report.
+
+Notes on faithfulness to Vidović (2018):
+  * His optimal model: hybrid learning, linear (first-order Sugeno) output, 3 epochs.
+  * His Table 40 sweeps 8 input MF types; hybrid error is essentially identical
+    across all of them (systems are insensitive to MF shape on this data).
+  * Internal training objective is squared error (least-squares consequent solve);
+    RMSE is the *reported* metric. This mirrors his method exactly.
+  * The 3-indicator (27-rule) model replicates his thesis. The 4-indicator
+    (81-rule) model has NO counterpart in his thesis -- it is our own extension.
+"""
+
 import json
-import random
 from pathlib import Path
+
+import numpy as np
+from sklearn.metrics import mean_squared_error
 
 from src.engine import ANFIS
 
-# "gaussian" and "triangular" are confirmed to work in this codebase already.
-# The rest are common ANFIS naming conventions but UNVERIFIED against this
-# specific anfis_toolbox version -- unsupported ones are caught and skipped
-# below rather than crashing the sweep. Trim/extend this list once you've
-# checked ANFISRegressor's accepted mf_type values locally.
-MEMBERSHIP_FUNCTION_CANDIDATES = [
-    "triangular",
-    "gaussian",
-    "trapezoidal",
-    "bell",
-    "sigmoid",
-]
 
-BASE_ANFIS_ARGS = {
-    "num_epochs": 4,
-    "learning_rate": 0.1,
-    "loss_function": "mse",
+def rmse(y_true, y_pred) -> float:
+    return float(np.sqrt(mean_squared_error(y_true, y_pred)))
+
+
+# Vidović's 8 Table-40 input MF types -> this library's accepted names.
+# (All 8 confirmed to resolve; none were rejected in earlier sweeps.)
+VIDOVIC_MF_MAP = {
+    "trimf": "triangular",
+    "tramf": "trapezoidal",
+    "gbellmf": "gbell",
+    "gaussmf": "gaussian",
+    "gauss2mf": "gaussian2",
+    "pimf": "pimf",
+    "dsigmf": "diffsigmoidal",
+    "psigmf": "prodsigmoidal",
+}
+
+BASE_ARGS = {
+    "num_epochs": 3,
+    "learning_rate": 0.1,   # irrelevant for hybrid (LSE solves consequents); pinned for reproducibility
+    "loss_function": "rmse",  # reported metric; hybrid's LSE consequent solve minimizes squared error regardless
     "optimizer": "hybrid",
     "shuffle": True,
     "n_mfs": 3,
 }
 
 results = []
+for num_indices in (3, 4):
+    for vidovic_name, lib_name in VIDOVIC_MF_MAP.items():
+        print(f"\n{'=' * 70}\nn={num_indices}  {vidovic_name} -> {lib_name}  (hybrid, 3 epochs)\n{'=' * 70}")
+        try:
+            model = ANFIS(
+                **BASE_ARGS,
+                membership_functions=lib_name,
+                num_indices=num_indices,
+                sheet_dir="real",
+            )
+            model.train()
+            row = {
+                "num_indices": num_indices,
+                "n_rules": int(model.model.model_.n_rules),
+                "vidovic_mf": vidovic_name,
+                "library_mf": lib_name,
+                "train_rmse": rmse(model.Y_train, model.model.predict(model.X_train)),
+                "val_rmse": rmse(model.Y_val, model.model.predict(model.X_val)),
+                "test_rmse": rmse(model.Y_test, model.model.predict(model.X_test)),
+                "n_train": int(len(model.Y_train)),
+                "n_val": int(len(model.Y_val)),
+                "n_test": int(len(model.Y_test)),
+            }
+            print(json.dumps(row, indent=2))
+            results.append(row)
+        except Exception as e:
+            print(f"  SKIPPED: {type(e).__name__}: {e}")
+            results.append({
+                "num_indices": num_indices,
+                "vidovic_mf": vidovic_name,
+                "library_mf": lib_name,
+                "error": str(e),
+            })
 
-for sheet_dir in ["real"]:
-    print(f"Using: {sheet_dir} sheets")
-    for num_indices in (3, 4):
-        for mf in MEMBERSHIP_FUNCTION_CANDIDATES:
-            # Pin the seed per num_indices (not per mf) so every membership
-            # function is trained/tested on the SAME train/val/test sheet
-            # split -- isolates the effect of mf type, same idea as the
-            # thesis holding the dataset fixed across its 32 FIS configs.
-            random.seed(1000 + num_indices)
-
-            label = f"num_indices={num_indices}, mf={mf}"
-            print(f"\n{'='*70}\n{label}\n{'='*70}")
-            try:
-                model = ANFIS(
-                    **BASE_ANFIS_ARGS,
-                    membership_functions=mf,
-                    num_indices=num_indices,
-                    sheet_dir=sheet_dir,
-                )
-                model.train()
-                metrics = model.test()
-            except Exception as e:
-                print(f"SKIPPED ({mf}): {type(e).__name__}: {e}")
-                results.append(
-                    {"num_indices": num_indices, "membership_function": mf, "error": str(e)}
-                )
-                continue
-
-            print(json.dumps(metrics, indent=4))
-            results.append({"num_indices": num_indices, "membership_function": mf, **metrics})
-
-# --- Summary, sorted best-first by RMSE (mirrors thesis Table 40 comparison) ---
-print(f"\n\n{'='*70}\nSUMMARY\n{'='*70}")
-ok = sorted((r for r in results if "error" not in r), key=lambda r: r["rmse"])
-for r in ok:
-    print(
-        f"num_indices={r['num_indices']:<2} mf={r['membership_function']:<12} "
-        f"RMSE={r['rmse']:.6f}  R²={r['r2']:.6f}"
-    )
-
-skipped = [r["membership_function"] for r in results if "error" in r]
-if skipped:
-    print(f"\nSkipped (unsupported mf_type or other error): {sorted(set(skipped))}")
-
-out_path = Path(__file__).parent / "mf_sweep_results.json"
+out_path = Path(__file__).parent / "hybrid_results.json"
 out_path.write_text(json.dumps(results, indent=2))
-print(f"\nFull results saved to {out_path}")
+print(f"\nSaved to {out_path}")

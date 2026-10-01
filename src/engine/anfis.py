@@ -33,6 +33,8 @@ class ANFIS:
         optimizer: str = "hybrid",
         shuffle: bool = True,
         n_mfs: int = 3,
+        split_seed: int | None = None,
+        verbose: bool = True
     ):
         _init_params = {k: v for k, v in list(locals().items()) if k != "self"}
         assert num_indices in (3, 4), "Number of indices must be 3 or 4"
@@ -42,6 +44,7 @@ class ANFIS:
         self.membership_functions = membership_functions
         self.optimizer = optimizer
         self.shuffle = shuffle
+        self.split_seed = split_seed
         self.rating_max = 6
         self.model = ANFISRegressor(
             n_mfs=n_mfs,
@@ -83,6 +86,7 @@ class ANFIS:
             config=self.config,
         )
         self.sheet_dir = sheet_dir
+        self.verbose = verbose
 
     # Text labels used in the survey Excel for each indicator column.
     # Each label maps to a normalised [0, 1] value: low=0.0, mid=0.5, high=1.0.
@@ -154,6 +158,8 @@ class ANFIS:
         """Split survey sheets into train / val / test (70% / 15% / 15%)."""
         all_sheets: dict = pd.read_excel(self._survey_path(), sheet_name=None)
         sheet_names = list(all_sheets.keys())
+        if self.split_seed is not None:
+            random.Random(self.split_seed).shuffle(sheet_names)
         n = len(sheet_names)
         i_train = int(0.7 * n)
         i_val = i_train + int(0.15 * n)
@@ -203,7 +209,7 @@ class ANFIS:
             self.Y_train,
             validation_data=(self.X_val, self.Y_val),
             validation_frequency=1,
-            verbose=True,
+            verbose=self.verbose,
         )
         history = self.model.training_history_
         self.model_registry.save_model_file(

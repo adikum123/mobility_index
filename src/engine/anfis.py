@@ -155,14 +155,14 @@ class ANFIS:
         return np.array(rows_X, dtype=np.float64), np.array(rows_Y, dtype=np.float64)
 
     def _set_data_expert_split(self) -> None:
-        """Split survey sheets into train / val / test (70% / 15% / 15%)."""
+        """Split survey sheets into train / val / test (8 / 3 / 3 experts)."""
         all_sheets: dict = pd.read_excel(self._survey_path(), sheet_name=None)
         sheet_names = list(all_sheets.keys())
         if self.split_seed is not None:
             random.Random(self.split_seed).shuffle(sheet_names)
         n = len(sheet_names)
-        i_train = int(0.7 * n)
-        i_val = i_train + int(0.15 * n)
+        i_train = 8
+        i_val = 11
         tr_names = sheet_names[:i_train]
         va_names = sheet_names[i_train:i_val]
         te_names = sheet_names[i_val:]

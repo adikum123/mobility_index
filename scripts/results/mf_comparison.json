@@ -1,0 +1,754 @@
+[
+  {
+    "num_indices": 3,
+    "mf": "trimf",
+    "library_mf": "triangular",
+    "train": {
+      "rmse": 0.23139072294858426,
+      "mse": 0.05354166666666848,
+      "r2": 0.3164220273864413
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.24740942170898964,
+      "mse": 0.06121142195037667,
+      "r2": 0.08559166799539775
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.2218921162628175,
+      "mse": 0.049236111259591715,
+      "r2": 0.44609374832959325
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "2e80e3141f3a4845a2e21070cc751bec",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 3,
+    "mf": "tramf",
+    "library_mf": "trapezoidal",
+    "train": {
+      "rmse": 0.23139072294858426,
+      "mse": 0.05354166666666848,
+      "r2": 0.3164220273864413
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.24740942170898958,
+      "mse": 0.06121142195037665,
+      "r2": 0.08559166799539808
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.2218921162628174,
+      "mse": 0.04923611125959168,
+      "r2": 0.4460937483295936
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "0058a974031948ff823361680edeb962",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 3,
+    "mf": "gbellmf",
+    "library_mf": "gbell",
+    "train": {
+      "rmse": 0.2313907229486062,
+      "mse": 0.053541666666678624,
+      "r2": 0.31642202738631187
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.24740942091077905,
+      "mse": 0.061211421555407035,
+      "r2": 0.08559167389566136
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.22189211838557643,
+      "mse": 0.04923611220163866,
+      "r2": 0.446093737731565
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "33f2e3e6082840eabb8bbbd245fdff0f",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 3,
+    "mf": "gaussmf",
+    "library_mf": "gaussian",
+    "train": {
+      "rmse": 0.23139072294858698,
+      "mse": 0.053541666666669735,
+      "r2": 0.31642202738642533
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.2474094222991264,
+      "mse": 0.061211422242387466,
+      "r2": 0.08559166363318738
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.22189211963605207,
+      "mse": 0.04923611275658005,
+      "r2": 0.4460937314884744
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "a6cf766722d84866a3672a715729c5c9",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 3,
+    "mf": "gauss2mf",
+    "library_mf": "gaussian2",
+    "train": {
+      "rmse": 0.23139072294874344,
+      "mse": 0.05354166666674214,
+      "r2": 0.31642202738550085
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.24740941410725692,
+      "mse": 0.061211418188896145,
+      "r2": 0.08559172418636696
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.2218921053522941,
+      "mse": 0.049236106417673585,
+      "r2": 0.44609380280117217
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "d585835273444a728135e1e949967771",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 3,
+    "mf": "pimf",
+    "library_mf": "pimf",
+    "train": {
+      "rmse": 0.23139072294858426,
+      "mse": 0.05354166666666848,
+      "r2": 0.3164220273864413
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.24740942170898958,
+      "mse": 0.06121142195037665,
+      "r2": 0.08559166799539808
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.2218921162628174,
+      "mse": 0.04923611125959168,
+      "r2": 0.4460937483295936
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "8787aa73db244d35a1f6297002210574",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 3,
+    "mf": "dsigmf",
+    "library_mf": "diffsigmoidal",
+    "train": {
+      "rmse": 0.23139072398576763,
+      "mse": 0.0535416671466577,
+      "r2": 0.31642202125831576
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.24740900310893546,
+      "mse": 0.06121121481935724,
+      "r2": 0.08559476222722495
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.22189089726846098,
+      "mse": 0.0492355702906027,
+      "r2": 0.44609983423071964
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "7105ae164e394920b3bddc02831ed33b",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 3,
+    "mf": "psigmf",
+    "library_mf": "prodsigmoidal",
+    "train": {
+      "rmse": 0.23139072371203911,
+      "mse": 0.05354166701998122,
+      "r2": 0.3164220228756216
+    },
+    "n_train": 216,
+    "val": {
+      "rmse": 0.2474090673641558,
+      "mse": 0.06121124661400139,
+      "r2": 0.08559428726215146
+    },
+    "n_val": 81,
+    "test": {
+      "rmse": 0.22189108373039834,
+      "mse": 0.04923565303905064,
+      "r2": 0.44609890331068025
+    },
+    "n_test": 81,
+    "n_rules": 27,
+    "model_id": "f360e5a3cf0243a18282291eb2d98018",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "trimf",
+    "library_mf": "triangular",
+    "train": {
+      "rmse": 0.23311828714725533,
+      "mse": 0.05434413580247018,
+      "r2": 0.26337488943836496
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.2421557472424723,
+      "mse": 0.058639405922560124,
+      "r2": 0.2674540322583453
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.19190805794718746,
+      "mse": 0.03682870270506106,
+      "r2": 0.4756225728127048
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "44d93ad6cb7146c19b8e61754ef23021",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "tramf",
+    "library_mf": "trapezoidal",
+    "train": {
+      "rmse": 0.23311828714725533,
+      "mse": 0.05434413580247018,
+      "r2": 0.26337488943836496
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.24215574724247216,
+      "mse": 0.05863940592256007,
+      "r2": 0.2674540322583461
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.19190805794718746,
+      "mse": 0.03682870270506106,
+      "r2": 0.4756225728127048
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "07272163da1f4d8da20f4297a0a6dff0",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "gbellmf",
+    "library_mf": "gbell",
+    "train": {
+      "rmse": 0.23311828714752592,
+      "mse": 0.054344135802596345,
+      "r2": 0.2633748894366549
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.24215573319505532,
+      "mse": 0.05863939911923482,
+      "r2": 0.26745411724809653
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.19190804961862287,
+      "mse": 0.036828699508423816,
+      "r2": 0.475622618327325
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "7cfb1f2381a64f60aff414d456f6fa96",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "gaussmf",
+    "library_mf": "gaussian",
+    "train": {
+      "rmse": 0.233118287147258,
+      "mse": 0.054344135802471424,
+      "r2": 0.2633748894383482
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.24215574648238194,
+      "mse": 0.05863940555443964,
+      "r2": 0.2674540368570477
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.19190805863642835,
+      "mse": 0.03682870296960282,
+      "r2": 0.4756225690460848
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "02e9c7eb1b9c4c2d96ca07f4f6da6133",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "gauss2mf",
+    "library_mf": "gaussian2",
+    "train": {
+      "rmse": 0.23311828715921767,
+      "mse": 0.05434413580804747,
+      "r2": 0.26337488936276576
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.24215567043593078,
+      "mse": 0.05863936872427512,
+      "r2": 0.26745449695360035
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.19190800607924186,
+      "mse": 0.03682868279731033,
+      "r2": 0.4756228562648588
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "0a335112b36e421f8e3654dd5fd03242",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "pimf",
+    "library_mf": "pimf",
+    "train": {
+      "rmse": 0.23311828714725533,
+      "mse": 0.05434413580247018,
+      "r2": 0.26337488943836496
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.24215574724247216,
+      "mse": 0.05863940592256007,
+      "r2": 0.2674540322583461
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.19190805794718746,
+      "mse": 0.03682870270506106,
+      "r2": 0.4756225728127048
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "f095e62f6d8d4b4a82ad1ce68265bd3e",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "dsigmf",
+    "library_mf": "diffsigmoidal",
+    "train": {
+      "rmse": 0.23312034709340118,
+      "mse": 0.054345096228947835,
+      "r2": 0.26336187102800956
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.24213267145813083,
+      "mse": 0.058628230587451126,
+      "r2": 0.2675936388342215
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.1918931678072201,
+      "mse": 0.03682298785108993,
+      "r2": 0.47570394251084847
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "184fb2aa1a8d4c97acc7eaedb74adac1",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  },
+  {
+    "num_indices": 4,
+    "mf": "psigmf",
+    "library_mf": "prodsigmoidal",
+    "train": {
+      "rmse": 0.2331198272898285,
+      "mse": 0.05434485387563947,
+      "r2": 0.2633651560840682
+    },
+    "n_train": 648,
+    "val": {
+      "rmse": 0.24213583921866436,
+      "mse": 0.05862976463412687,
+      "r2": 0.26757447493429853
+    },
+    "n_val": 243,
+    "test": {
+      "rmse": 0.19189472378092845,
+      "mse": 0.036823585014958825,
+      "r2": 0.47569543992373076
+    },
+    "n_test": 243,
+    "n_rules": 81,
+    "model_id": "4f1593ebc30747b4bc96a390701c26b6",
+    "experts": {
+      "train": [
+        "Ekspert_1",
+        "Ekspert_2",
+        "Ekspert_3",
+        "Ekspert_4",
+        "Ekspert_5",
+        "Ekspert_6",
+        "Ekspert_7",
+        "Ekspert_8"
+      ],
+      "val": [
+        "Ekspert_9",
+        "Ekspert_10",
+        "Ekspert_11"
+      ],
+      "test": [
+        "Ekspert_12",
+        "Ekspert_13",
+        "Ekspert_14"
+      ]
+    }
+  }
+]

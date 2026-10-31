@@ -75,7 +75,7 @@ class ANFIS:
 
         self.model_id = uuid.uuid4().hex
         self.config = dict(_init_params)
-        self.model_path = self.models_dir / f"{self.model_id}.pkl"
+        self.model_path = self.models_dir / f"{num_indices}_{membership_functions}.pkl"
         self.model_registry = ModelRegistry()
         self.train_run_registry = TrainRunRegistry()
         self.test_run_registry = TestRunRegistry()
